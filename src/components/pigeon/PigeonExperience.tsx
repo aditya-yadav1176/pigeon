@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowDown,
+  ArrowRight,
   Check,
   Clipboard,
   Clock3,
@@ -9,17 +10,16 @@ import {
   File,
   FileImage,
   FileText,
+  KeyRound,
   Laptop,
   LoaderCircle,
   MessageSquareText,
-  MonitorDown,
   Plus,
   RotateCcw,
   Share2,
   Smartphone,
   Trash2,
   Upload,
-  Wifi,
   X,
 } from "lucide-react";
 
@@ -34,32 +34,60 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { Pigeon, PigeonMark } from "./PigeonCharacter";
+import { transferService, type TransferPayload, type TransferRoom } from "@/services/transfer";
+import { Pigeon, PigeonMark } from "./Pigeon";
+import type { PigeonState } from "./pigeon.types";
 
-type Stage =
-  "empty" | "selected" | "uploading" | "ready" | "connected" | "received" | "expired" | "error";
+/**
+ * Application UX States (Phase 4 State Machine)
+ */
+export type AppState =
+  | "IDLE"
+  | "FILE_SELECTED"
+  | "UPLOADING"
+  | "READY"
+  | "WAITING_FOR_RECEIVER"
+  | "RECEIVER_CODE_ENTRY"
+  | "CONNECTING"
+  | "SENDING"
+  | "RECEIVING"
+  | "SUCCESS"
+  | "ERROR"
+  | "EXPIRED";
 
-type Payload = {
-  id: string;
-  name: string;
-  size: number;
-  type: string;
-  text?: string;
-};
+export type ActiveMode = "send" | "receive";
 
-const DEMO_PAYLOADS: Payload[] = [
-  { id: "demo-pdf", name: "DBMS Notes.pdf", size: 4_200_000, type: "application/pdf" },
-  {
-    id: "demo-ppt",
-    name: "Presentation.pptx",
-    size: 24_800_000,
-    type: "application/vnd.ms-powerpoint",
-  },
-  { id: "demo-image", name: "diagram.png", size: 1_700_000, type: "image/png" },
-];
-
-const ROOM_CODE = "4K9X";
-const ROOM_URL = "pigeon.app/r/4K9X";
+/**
+ * Maps high-level application state to the Pigeon animation state engine.
+ */
+function getPigeonState(appState: AppState): PigeonState {
+  switch (appState) {
+    case "IDLE":
+      return "idle";
+    case "FILE_SELECTED":
+      return "dragging";
+    case "UPLOADING":
+      return "uploading";
+    case "READY":
+      return "ready";
+    case "WAITING_FOR_RECEIVER":
+      return "waiting";
+    case "RECEIVER_CODE_ENTRY":
+      return "idle";
+    case "CONNECTING":
+      return "waiting";
+    case "SENDING":
+      return "sending";
+    case "RECEIVING":
+      return "receiving";
+    case "SUCCESS":
+      return "success";
+    case "ERROR":
+      return "error";
+    case "EXPIRED":
+      return "expired";
+  }
+}
 
 function formatSize(size: number) {
   if (size < 1024) return `${size} B`;
@@ -67,89 +95,10 @@ function formatSize(size: number) {
   return `${(size / 1024 / 1024).toFixed(1)} MB`;
 }
 
-/** Deterministic decorative QR-style matrix (visual only). */
-function useQrMatrix(seed: string, size = 21) {
-  return useMemo(() => {
-    let hash = 2166136261;
-    for (const char of seed) {
-      hash ^= char.charCodeAt(0);
-      hash = Math.imul(hash, 16777619);
-    }
-    const rand = () => {
-      hash ^= hash << 13;
-      hash ^= hash >>> 17;
-      hash ^= hash << 5;
-      return Math.abs(hash % 1000) / 1000;
-    };
-    const inFinder = (row: number, col: number) =>
-      (row < 8 && col < 8) || (row < 8 && col > size - 9) || (row > size - 9 && col < 8);
-    const inLogo = (row: number, col: number) => {
-      const mid = (size - 1) / 2;
-      return Math.abs(row - mid) <= 2 && Math.abs(col - mid) <= 2;
-    };
-    return Array.from({ length: size }, (_, row) =>
-      Array.from({ length: size }, (_, col) =>
-        inFinder(row, col) || inLogo(row, col) ? false : rand() > 0.48,
-      ),
-    );
-  }, [seed, size]);
-}
-
 function FileGlyph({ type }: { type: string }) {
   if (type.startsWith("image")) return <FileImage />;
   if (type === "text/plain") return <MessageSquareText />;
   return type.includes("pdf") || type.includes("presentation") ? <FileText /> : <File />;
-}
-
-function Finder({
-  className,
-  style,
-}: {
-  className?: string | undefined;
-  style?: React.CSSProperties | undefined;
-}) {
-  return (
-    <span
-      style={style}
-      className={cn("absolute grid place-items-center border-[6px] border-ink bg-paper", className)}
-    >
-      <span className="h-1/2 w-1/2 bg-ink" />
-    </span>
-  );
-}
-
-function QrArt({ size = 21 }: { size?: number }) {
-  const matrix = useQrMatrix(ROOM_CODE, size);
-  const unit = `${100 / size}%`;
-  return (
-    <div className="qr-reveal relative aspect-square w-full bg-paper p-[6%]">
-      <div
-        className="relative grid h-full w-full"
-        style={{ gridTemplateColumns: `repeat(${size}, 1fr)` }}
-      >
-        {matrix.flatMap((row, r) =>
-          row.map((on, c) => (
-            <span key={`${r}-${c}`} className={on ? "bg-ink" : "bg-transparent"} />
-          )),
-        )}
-        <Finder className="left-0 top-0" style={{ width: unit, height: unit } as never} />
-      </div>
-      {/* finder eyes */}
-      <span className="pointer-events-none absolute left-[6%] top-[6%] grid aspect-square w-[30%] place-items-center border-[0.5rem] border-ink bg-paper">
-        <span className="h-1/2 w-1/2 bg-cobalt" />
-      </span>
-      <span className="pointer-events-none absolute right-[6%] top-[6%] grid aspect-square w-[30%] place-items-center border-[0.5rem] border-ink bg-paper">
-        <span className="h-1/2 w-1/2 bg-ink" />
-      </span>
-      <span className="pointer-events-none absolute bottom-[6%] left-[6%] grid aspect-square w-[30%] place-items-center border-[0.5rem] border-ink bg-paper">
-        <span className="h-1/2 w-1/2 bg-coral" />
-      </span>
-      {/* pigeon sits in the middle of its own code */}
-      <span className="pointer-events-none absolute left-1/2 top-1/2 w-[26%] -translate-x-1/2 -translate-y-1/2 bg-paper p-1 text-ink">
-        <Pigeon mood="idle" wingClass="fill-acid" beakClass="fill-coral" />
-      </span>
-    </div>
-  );
 }
 
 function IconButton({
@@ -161,7 +110,7 @@ function IconButton({
   label: string;
   children: React.ReactNode;
   onClick?: () => void;
-  className?: string;
+  className?: string | undefined;
 }) {
   return (
     <Tooltip>
@@ -184,133 +133,281 @@ function IconButton({
 
 export function PigeonExperience() {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [stage, setStage] = useState<Stage>("empty");
-  const [files, setFiles] = useState<Payload[]>([]);
+
+  // Core Mode: "send" or "receive"
+  const [mode, setMode] = useState<ActiveMode>("send");
+
+  // Application State
+  const [appState, setAppState] = useState<AppState>("IDLE");
+
+  // Real File selection state (retains browser File objects in memory)
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [activePayloads, setActivePayloads] = useState<TransferPayload[]>([]);
+
+  // Active room created in Send mode
+  const [activeRoom, setActiveRoom] = useState<TransferRoom | null>(null);
+
+  // Active room loaded in Receive mode
+  const [receivedRoom, setReceivedRoom] = useState<TransferRoom | null>(null);
+
+  // Receiver code input
+  const [receiveCode, setReceiveCode] = useState("K7M4-PQ");
+  const [codeError, setCodeError] = useState<string | null>(null);
+
+  // Progress, countdown, dialogs
   const [progress, setProgress] = useState(0);
-  const [seconds, setSeconds] = useState(582);
+  const [seconds, setSeconds] = useState(599);
   const [textOpen, setTextOpen] = useState(false);
   const [textValue, setTextValue] = useState("");
   const [copied, setCopied] = useState(false);
   const [dragging, setDragging] = useState(false);
-  const [downloaded, setDownloaded] = useState<string[]>([]);
+  const [downloadedIds, setDownloadedIds] = useState<string[]>([]);
 
-  const activePayloads = files.length ? files : DEMO_PAYLOADS;
+  const pigeonState = getPigeonState(appState);
+
   const totalSize = useMemo(
     () => activePayloads.reduce((sum, file) => sum + file.size, 0),
     [activePayloads],
   );
 
+  // Room countdown timer
   useEffect(() => {
-    if (stage !== "uploading") return;
-    const timer = window.setInterval(() => {
-      setProgress((value) => {
-        const next = Math.min(value + 4, 100);
-        if (next === 100) {
-          window.clearInterval(timer);
-          window.setTimeout(() => setStage("ready"), 350);
-        }
-        return next;
-      });
-    }, 90);
-    return () => window.clearInterval(timer);
-  }, [stage]);
-
-  useEffect(() => {
-    if (!["ready", "connected", "received"].includes(stage)) return;
+    if (!["READY", "WAITING_FOR_RECEIVER"].includes(appState)) return;
     const timer = window.setInterval(() => setSeconds((value) => Math.max(0, value - 1)), 1000);
     return () => window.clearInterval(timer);
-  }, [stage]);
+  }, [appState]);
 
   useEffect(() => {
-    if (seconds === 0 && ["ready", "connected", "received"].includes(stage)) setStage("expired");
-  }, [seconds, stage]);
+    if (seconds === 0 && ["READY", "WAITING_FOR_RECEIVER"].includes(appState)) {
+      setAppState("EXPIRED");
+    }
+  }, [seconds, appState]);
 
-  function acceptFiles(list: FileList | File[]) {
+  // Mode switcher handler
+  function switchMode(newMode: ActiveMode) {
+    setMode(newMode);
+    setCodeError(null);
+    if (newMode === "receive") {
+      // If we already completed a transfer, keep success; otherwise open code entry
+      if (appState !== "SUCCESS") {
+        setAppState("RECEIVER_CODE_ENTRY");
+      }
+      if (activeRoom) {
+        setReceiveCode(activeRoom.code);
+      }
+    } else {
+      if (activeRoom && ["READY", "WAITING_FOR_RECEIVER"].includes(appState)) {
+        // preserve active room state
+      } else if (appState !== "SUCCESS" && appState !== "FILE_SELECTED") {
+        setAppState("IDLE");
+      }
+    }
+  }
+
+  // Handle incoming file drops / selections
+  function handleFiles(list: FileList | File[]) {
     const incoming = Array.from(list);
     if (incoming.some((file) => file.size > 250 * 1024 * 1024)) {
-      setStage("error");
+      setAppState("ERROR");
       return;
     }
-    setFiles(
+
+    setSelectedFiles(incoming);
+    setActivePayloads(
       incoming.map((file, index) => ({
-        id: `${file.name}-${file.lastModified}-${index}`,
+        id: `payload-${Date.now()}-${index}`,
         name: file.name,
         size: file.size,
         type: file.type || "application/octet-stream",
+        file,
       })),
     );
-    setStage("selected");
+    setAppState("FILE_SELECTED");
     setProgress(0);
+    setMode("send");
   }
 
-  function sendText() {
+  // Handle text paste dialog submission
+  async function handleSendText() {
     const trimmed = textValue.trim();
     if (!trimmed) return;
-    setFiles([
-      {
-        id: `text-${Date.now()}`,
-        name: trimmed.startsWith("http") ? "Shared link" : "Shared note",
-        size: new Blob([trimmed]).size,
-        type: "text/plain",
-        text: trimmed,
-      },
-    ]);
-    setStage("selected");
+
+    setAppState("UPLOADING");
     setTextOpen(false);
+    setProgress(0);
+
+    try {
+      const room = await transferService.uploadText(trimmed, (pct) => setProgress(pct));
+      setActiveRoom(room);
+      setActivePayloads(room.payloads);
+      setAppState("WAITING_FOR_RECEIVER");
+      setSeconds(599);
+    } catch {
+      setAppState("ERROR");
+    }
   }
 
-  function reset() {
-    setStage("empty");
-    setFiles([]);
+  // Trigger Send Across
+  async function startUpload() {
+    if (!selectedFiles.length) return;
+    setAppState("UPLOADING");
     setProgress(0);
-    setSeconds(582);
-    setDownloaded([]);
+
+    try {
+      const room = await transferService.uploadFiles(selectedFiles, (pct) => setProgress(pct));
+      setActiveRoom(room);
+      setActivePayloads(room.payloads);
+      setAppState("WAITING_FOR_RECEIVER");
+      setSeconds(599);
+    } catch {
+      setAppState("ERROR");
+    }
+  }
+
+  // Receiver: Submit code and execute signature handoff sequence
+  async function handleReceiveSubmit(e?: React.FormEvent) {
+    if (e) e.preventDefault();
+    setCodeError(null);
+
+    const codeToLookup = receiveCode.trim();
+    if (!codeToLookup) {
+      setCodeError("Please enter a Pigeon code.");
+      return;
+    }
+
+    try {
+      const room = await transferService.joinRoom(codeToLookup);
+      setReceivedRoom(room);
+
+      // STEP 1: CONNECTING (0.6s)
+      setAppState("CONNECTING");
+
+      window.setTimeout(() => {
+        // STEP 2: SENDING (1.8s signature sequence)
+        setAppState("SENDING");
+
+        window.setTimeout(() => {
+          // STEP 3: RECEIVING (1.2s landing sequence)
+          setAppState("RECEIVING");
+
+          window.setTimeout(() => {
+            // STEP 4: SUCCESS ("GOT IT.")
+            setAppState("SUCCESS");
+          }, 1200);
+        }, 1800);
+      }, 600);
+    } catch {
+      setCodeError(
+        `No active Pigeon found with code "${codeToLookup}". Check the code on the sender screen.`,
+      );
+    }
+  }
+
+  function resetAll() {
+    setAppState("IDLE");
+    setSelectedFiles([]);
+    setActivePayloads([]);
+    setActiveRoom(null);
+    setReceivedRoom(null);
+    setProgress(0);
+    setSeconds(599);
+    setDownloadedIds([]);
     setTextValue("");
     setCopied(false);
+    setCodeError(null);
+    setMode("send");
   }
 
-  async function copyLink() {
-    await navigator.clipboard?.writeText(`https://${ROOM_URL}`);
+  async function copyCode(code: string) {
+    await navigator.clipboard?.writeText(code);
     setCopied(true);
     window.setTimeout(() => setCopied(false), 1800);
   }
 
-  async function shareRoom() {
-    if (navigator.share)
-      await navigator.share({ title: "Your Pigeon is ready", url: `https://${ROOM_URL}` });
-    else await copyLink();
+  async function shareCode(code: string) {
+    if (navigator.share) {
+      await navigator.share({
+        title: "Your Pigeon is ready",
+        text: `Open pigeon.app and enter code: ${code}`,
+      });
+    } else {
+      await copyCode(code);
+    }
   }
 
-  function downloadFile(id: string) {
-    setDownloaded((items) => [...new Set([...items, id])]);
+  function triggerDownload(payload: TransferPayload) {
+    transferService.downloadPayload(payload);
+    setDownloadedIds((prev) => [...new Set([...prev, payload.id])]);
   }
 
-  const isRoom = ["ready", "connected", "received", "expired"].includes(stage);
+  function triggerDownloadAll(payloads: TransferPayload[]) {
+    transferService.downloadAll(payloads);
+    setDownloadedIds(payloads.map((p) => p.id));
+  }
+
   const minutes = String(Math.floor(seconds / 60)).padStart(2, "0");
   const remainder = String(seconds % 60).padStart(2, "0");
 
   return (
     <TooltipProvider delayDuration={200}>
       <div className="min-h-screen overflow-x-clip bg-paper font-body text-ink">
+        {/* Sticky Header with Send / Receive Mode Switcher */}
         <header className="sticky top-0 z-40 border-b-2 border-ink bg-paper">
-          <div className="mx-auto grid max-w-[1440px] grid-cols-[minmax(0,1fr)_auto] items-center gap-4 px-4 py-3 sm:px-7">
-            <a href="#top" className="flex min-w-0 items-center gap-2.5" aria-label="Pigeon home">
+          <div className="mx-auto grid max-w-[1440px] grid-cols-[auto_1fr_auto] items-center gap-4 px-4 py-3 sm:px-7">
+            <button
+              type="button"
+              onClick={resetAll}
+              className="flex min-w-0 items-center gap-2.5 text-left"
+              aria-label="Pigeon home"
+            >
               <span className="grid h-10 w-11 shrink-0 -rotate-3 place-items-center rounded-sm bg-ink px-1.5 text-paper">
                 <PigeonMark className="w-full" />
               </span>
               <span className="truncate font-display text-lg font-extrabold tracking-tight">
                 PIGEON
               </span>
-            </a>
+            </button>
+
+            {/* Centered Mode Switcher */}
+            <div className="flex justify-center">
+              <div className="inline-flex border-2 border-ink bg-paper p-0.5">
+                <button
+                  type="button"
+                  onClick={() => switchMode("send")}
+                  className={cn(
+                    "px-3.5 py-1.5 font-display text-xs font-extrabold uppercase tracking-[0.14em] transition-colors sm:text-sm",
+                    mode === "send" ? "bg-ink text-paper" : "text-ink hover:bg-ink/10",
+                  )}
+                >
+                  Send a file
+                </button>
+                <button
+                  type="button"
+                  onClick={() => switchMode("receive")}
+                  className={cn(
+                    "px-3.5 py-1.5 font-display text-xs font-extrabold uppercase tracking-[0.14em] transition-colors sm:text-sm",
+                    mode === "receive" ? "bg-cobalt text-paper" : "text-ink hover:bg-ink/10",
+                  )}
+                >
+                  Receive
+                </button>
+              </div>
+            </div>
+
+            {/* Right Action */}
             <div className="flex shrink-0 items-center gap-3 text-sm">
-              <span className="hidden font-semibold text-ink/55 sm:inline">
+              <span className="hidden font-semibold text-ink/55 lg:inline">
                 No login. No install.
               </span>
               <Button
-                onClick={() => fileInputRef.current?.click()}
-                className="h-10 rounded-none border-2 border-ink bg-acid px-4 text-ink shadow-none hover:bg-ink hover:text-paper"
+                onClick={() => {
+                  setMode("send");
+                  fileInputRef.current?.click();
+                }}
+                className="h-10 rounded-none border-2 border-ink bg-acid px-3 text-ink shadow-none hover:bg-ink hover:text-paper sm:px-4"
               >
-                <Plus /> Drop a file
+                <Plus className="h-4 w-4" /> <span className="hidden sm:inline">Drop a file</span>
+                <span className="sm:hidden">Drop</span>
               </Button>
             </div>
           </div>
@@ -318,33 +415,34 @@ export function PigeonExperience() {
 
         <main id="top">
           {/* ---------------- HERO POSTER ---------------- */}
-          <section className="relative mx-auto max-w-[1440px] px-4 pb-10 pt-10 sm:px-7 sm:pt-16">
-            <div className="pointer-events-none absolute -right-10 top-2 select-none font-display text-[16rem] font-extrabold leading-none text-coral/15 sm:text-[26rem] lg:-right-6">
+          <section className="relative mx-auto max-w-[1440px] px-4 pb-8 pt-8 sm:px-7 sm:pb-10 sm:pt-14">
+            <div className="pointer-events-none absolute -right-10 top-2 select-none font-display text-[14rem] font-extrabold leading-none text-coral/15 sm:text-[24rem] lg:-right-6">
               01
             </div>
 
             <div className="relative grid gap-8 lg:grid-cols-12 lg:items-end">
               <div className="relative z-10 lg:col-span-7">
-                <div className="mb-5 inline-flex items-center gap-2 border-2 border-ink bg-paper px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.18em]">
+                <div className="mb-4 inline-flex items-center gap-2 border-2 border-ink bg-paper px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.18em]">
                   <span className="h-2 w-2 rounded-full bg-acid" /> Phone <span>→</span> Pigeon{" "}
-                  <span>→</span> Laptop
+                  <span>→</span> Laptop / Board
                 </div>
-                <h1 className="font-display text-[3.4rem] font-extrabold leading-[0.86] tracking-[-0.03em] sm:text-8xl lg:text-[8.5rem]">
+                <h1 className="font-display text-[3.2rem] font-extrabold leading-[0.86] tracking-[-0.03em] sm:text-8xl lg:text-[8rem]">
                   <span className="block">Get it</span>
                   <span className="relative z-10 block">
-                    <span className="relative inline-block bg-acid px-2 -rotate-1">off</span> your
+                    <span className="relative inline-block -rotate-1 bg-acid px-2">off</span> your
                   </span>
                   <span className="block">phone.</span>
                 </h1>
-                <p className="mt-6 max-w-[42ch] text-pretty text-lg leading-relaxed text-ink/65">
-                  Drop it. Scan it from your laptop. Done. No email, no WhatsApp, no account.
+                <p className="mt-5 max-w-[42ch] text-pretty text-base leading-relaxed text-ink/65 sm:text-lg">
+                  Drop it. Get a short code. Pick it up on your laptop or board. No email, no
+                  WhatsApp, no account.
                 </p>
               </div>
 
-              {/* oversized character, overlapping the headline and breaking the grid */}
-              <div className="pointer-events-none absolute right-[-6%] top-[-4%] z-0 w-[62%] max-w-[560px] rotate-[-8deg] text-cobalt opacity-95 sm:w-[52%] lg:right-[-4%] lg:top-[-14%] lg:w-[46%]">
+              {/* Oversized character with live state engine */}
+              <div className="pointer-events-none absolute right-[-6%] top-[-4%] z-0 w-[58%] max-w-[520px] -rotate-6 text-cobalt opacity-95 sm:w-[48%] lg:right-[-4%] lg:top-[-14%] lg:w-[44%]">
                 <Pigeon
-                  mood="waiting"
+                  state={pigeonState}
                   wingClass="fill-paper/35"
                   beakClass="fill-acid"
                   eyeClass="fill-paper"
@@ -353,12 +451,16 @@ export function PigeonExperience() {
 
               <div className="relative z-10 lg:col-span-5">
                 <div className="flex flex-wrap gap-2">
-                  {["OPEN", "DROP", "SCAN", "DONE"].map((word, index) => (
+                  {["OPEN", "DROP", "CODE", "DONE"].map((word, index) => (
                     <span
                       key={word}
                       className={cn(
                         "border-2 border-ink px-3 py-1.5 font-display text-sm font-extrabold tracking-[0.14em]",
-                        index === 3 ? "bg-ink text-paper" : "bg-paper",
+                        index === 2
+                          ? "bg-acid text-ink"
+                          : index === 3
+                            ? "bg-ink text-paper"
+                            : "bg-paper",
                       )}
                     >
                       {word}
@@ -375,7 +477,7 @@ export function PigeonExperience() {
               {Array.from({ length: 8 }).map((_, index) => (
                 <span key={index} className="flex items-center gap-8">
                   Open <span className="text-acid">·</span> Drop{" "}
-                  <span className="text-acid">·</span> Scan <span className="text-acid">·</span>{" "}
+                  <span className="text-acid">·</span> Code <span className="text-acid">·</span>{" "}
                   Done <span className="text-acid">✦</span>
                 </span>
               ))}
@@ -383,33 +485,50 @@ export function PigeonExperience() {
           </div>
 
           {/* ---------------- THE MACHINE ---------------- */}
-          <section className="mx-auto max-w-[1440px] px-4 py-10 sm:px-7 sm:py-14">
-            {isRoom ? (
-              <QrMoment
-                stage={stage}
-                files={activePayloads}
+          <section className="mx-auto max-w-[1440px] px-4 py-8 sm:px-7 sm:py-12">
+            {/* View Mode Switching */}
+            {mode === "receive" ? (
+              <ReceiveSection
+                appState={appState}
+                receiveCode={receiveCode}
+                codeError={codeError}
+                activeRoomCode={activeRoom?.code}
+                room={receivedRoom}
+                onCodeChange={(code) => {
+                  setReceiveCode(code);
+                  setCodeError(null);
+                }}
+                onSubmit={handleReceiveSubmit}
+                onDownload={triggerDownload}
+                onDownloadAll={triggerDownloadAll}
+                downloadedIds={downloadedIds}
+                onReset={() => {
+                  setAppState("RECEIVER_CODE_ENTRY");
+                  setReceivedRoom(null);
+                  setCodeError(null);
+                }}
+              />
+            ) : ["READY", "WAITING_FOR_RECEIVER", "EXPIRED"].includes(appState) && activeRoom ? (
+              <CodeMoment
+                appState={appState}
+                room={activeRoom}
                 minutes={minutes}
                 seconds={remainder}
                 copied={copied}
-                onCopy={copyLink}
-                onShare={shareRoom}
-                onConnect={() => setStage("connected")}
-                onReceive={() => setStage("received")}
-                onReset={reset}
-                downloaded={downloaded}
-                onDownload={downloadFile}
-                onDownloadAll={() => setDownloaded(activePayloads.map((file) => file.id))}
+                onCopy={() => copyCode(activeRoom.code)}
+                onShare={() => shareCode(activeRoom.code)}
+                onReset={resetAll}
+                onSwitchToReceive={() => {
+                  setReceiveCode(activeRoom.code);
+                  switchMode("receive");
+                }}
               />
             ) : (
               <div className="grid gap-4 lg:grid-cols-12">
                 <section className="relative col-span-12 flex min-h-[460px] flex-col border-2 border-ink bg-surface p-4 shadow-poster sm:p-6 lg:col-span-8">
-                  {/* pigeon head peeks out over the top edge of the card */}
+                  {/* Pigeon mascot peering over top edge */}
                   <span className="pointer-events-none absolute -top-14 right-6 hidden w-32 rotate-6 text-ink sm:block">
-                    <Pigeon
-                      mood={dragging ? "carrying" : "idle"}
-                      wingClass="fill-acid"
-                      beakClass="fill-coral"
-                    />
+                    <Pigeon state={pigeonState} wingClass="fill-acid" beakClass="fill-coral" />
                   </span>
 
                   <div className="mb-4 flex items-center justify-between">
@@ -417,42 +536,48 @@ export function PigeonExperience() {
                     <span
                       className={cn(
                         "h-2.5 w-2.5 rounded-full",
-                        stage === "error" ? "bg-coral" : "bg-acid",
+                        appState === "ERROR" ? "bg-coral" : "bg-acid",
                       )}
                     />
                   </div>
 
-                  {stage === "error" ? (
+                  {appState === "ERROR" ? (
                     <div className="grid flex-1 place-items-center border-2 border-dashed border-coral bg-coral/10 p-6 text-center">
                       <div>
                         <span className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-coral text-paper">
-                          <X />
+                          <X className="h-7 w-7" />
                         </span>
                         <h2 className="mt-5 font-display text-3xl font-extrabold">
                           That one’s too heavy.
                         </h2>
                         <p className="mx-auto mt-2 max-w-xs text-sm leading-relaxed text-ink/60">
-                          This demo carries files up to 250 MB. Nothing was uploaded.
+                          This prototype carries files up to 250 MB. Nothing was stored.
                         </p>
                         <Button
-                          onClick={reset}
+                          onClick={resetAll}
                           className="mt-6 h-11 rounded-none border-2 border-ink bg-ink px-5 text-paper hover:bg-cobalt"
                         >
-                          <RotateCcw /> Try another
+                          <RotateCcw className="mr-2 h-4 w-4" /> Try another
                         </Button>
                       </div>
                     </div>
-                  ) : files.length ? (
+                  ) : activePayloads.length ? (
                     <div className="flex flex-1 flex-col">
                       <FileList
-                        files={files}
+                        files={activePayloads}
                         onRemove={(id) => {
-                          const next = files.filter((file) => file.id !== id);
-                          setFiles(next);
-                          if (!next.length) setStage("empty");
+                          const next = activePayloads.filter((file) => file.id !== id);
+                          setActivePayloads(next);
+                          setSelectedFiles(
+                            selectedFiles.filter(
+                              (_, idx) => idx !== activePayloads.findIndex((p) => p.id === id),
+                            ),
+                          );
+                          if (!next.length) setAppState("IDLE");
                         }}
                       />
-                      {stage === "uploading" && (
+
+                      {appState === "UPLOADING" && (
                         <div className="mt-auto border-2 border-ink bg-ink p-5 text-paper">
                           <div className="flex items-center justify-between gap-4">
                             <span className="font-display text-2xl font-extrabold">
@@ -465,19 +590,19 @@ export function PigeonExperience() {
                             className="mt-4 h-2 rounded-none bg-paper/20 [&>div]:bg-acid"
                           />
                           <div className="mt-6 flex items-center justify-between">
-                            <Smartphone />
+                            <Smartphone className="h-6 w-6" />
                             <span className="w-24 text-cobalt">
                               <Pigeon
-                                mood="carrying"
+                                state="uploading"
                                 wingClass="fill-acid"
                                 beakClass="fill-coral"
                                 parcelClass="fill-coral"
                               />
                             </span>
-                            <Laptop />
+                            <Laptop className="h-6 w-6" />
                           </div>
                           <Button
-                            onClick={reset}
+                            onClick={resetAll}
                             variant="ghost"
                             className="mt-4 w-full rounded-none text-paper/60 hover:bg-paper/10 hover:text-paper"
                           >
@@ -485,23 +610,21 @@ export function PigeonExperience() {
                           </Button>
                         </div>
                       )}
-                      {stage === "selected" && (
+
+                      {appState === "FILE_SELECTED" && (
                         <div className="mt-auto grid gap-2 pt-5 sm:grid-cols-2">
                           <Button
-                            onClick={() => {
-                              setProgress(0);
-                              setStage("uploading");
-                            }}
+                            onClick={startUpload}
                             className="h-12 rounded-none border-2 border-ink bg-cobalt text-paper shadow-none hover:bg-ink"
                           >
-                            <Upload /> Send across
+                            <Upload className="mr-2 h-4 w-4" /> Send across
                           </Button>
                           <Button
                             onClick={() => fileInputRef.current?.click()}
                             variant="outline"
                             className="h-12 rounded-none border-2 border-ink bg-paper"
                           >
-                            <Plus /> Add more
+                            <Plus className="mr-2 h-4 w-4" /> Add more
                           </Button>
                         </div>
                       )}
@@ -521,7 +644,7 @@ export function PigeonExperience() {
                       onDrop={(event) => {
                         event.preventDefault();
                         setDragging(false);
-                        acceptFiles(event.dataTransfer.files);
+                        handleFiles(event.dataTransfer.files);
                       }}
                     >
                       <div className="relative z-10">
@@ -531,12 +654,7 @@ export function PigeonExperience() {
                             dragging ? "-translate-y-2 scale-110" : "group-hover:-translate-y-1",
                           )}
                         >
-                          <Pigeon
-                            mood={dragging ? "carrying" : "waiting"}
-                            wingClass="fill-acid"
-                            beakClass="fill-coral"
-                            parcelClass="fill-coral"
-                          />
+                          <Pigeon state={dragging ? "dragging" : "idle"} parcelClass="fill-coral" />
                         </span>
                         <h2 className="mt-6 font-display text-4xl font-extrabold leading-none">
                           {dragging ? "Give it here." : "Drop it on the bird."}
@@ -549,42 +667,43 @@ export function PigeonExperience() {
                             onClick={() => fileInputRef.current?.click()}
                             className="h-12 rounded-none border-2 border-ink bg-cobalt text-paper shadow-none hover:bg-ink"
                           >
-                            <Upload /> Choose files
+                            <Upload className="mr-2 h-4 w-4" /> Choose files
                           </Button>
                           <Button
                             onClick={() => setTextOpen(true)}
                             variant="outline"
                             className="h-12 rounded-none border-2 border-ink bg-paper"
                           >
-                            <Clipboard /> Paste text
+                            <Clipboard className="mr-2 h-4 w-4" /> Paste text
                           </Button>
                         </div>
                         <p className="mt-5 text-xs font-bold uppercase tracking-[0.14em] text-ink/45">
-                          No account · Temporary
+                          No account · Temporary Code
                         </p>
                       </div>
                       <span className="dispatch-dot absolute left-[38%] top-[86%] h-3 w-3 rounded-full bg-coral" />
                       <ArrowDown className="pointer-events-none absolute left-6 top-6 h-6 w-6 text-ink/25" />
                     </div>
                   )}
+
                   <input
                     ref={fileInputRef}
                     className="sr-only"
                     type="file"
                     multiple
-                    onChange={(event) => event.target.files && acceptFiles(event.target.files)}
+                    onChange={(event) => event.target.files && handleFiles(event.target.files)}
                   />
                 </section>
 
                 <div className="col-span-12 grid gap-4 lg:col-span-4">
-                  <TransferVisual stage={stage} />
-                  <PayloadPanel files={activePayloads} totalSize={totalSize} stage={stage} />
+                  <TransferVisual appState={appState} />
+                  <PayloadPanel files={activePayloads} totalSize={totalSize} appState={appState} />
                 </div>
               </div>
             )}
           </section>
 
-          <CampaignSections />
+          <CampaignSections onSwitchToReceive={() => switchMode("receive")} />
         </main>
 
         <footer className="border-t-2 border-ink bg-paper px-4 py-8 sm:px-7">
@@ -599,6 +718,7 @@ export function PigeonExperience() {
           </div>
         </footer>
 
+        {/* Dialog for Text Sharing */}
         <Dialog open={textOpen} onOpenChange={setTextOpen}>
           <DialogContent className="max-w-xl rounded-none border-2 border-ink bg-paper p-5 shadow-poster sm:p-7">
             <DialogHeader>
@@ -617,13 +737,13 @@ export function PigeonExperience() {
               className="mt-3 min-h-44 w-full resize-none border-2 border-ink bg-surface p-4 text-base outline-none focus:ring-2 focus:ring-cobalt/30"
             />
             <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
-              <p className="self-center text-xs text-ink/45">Stays only in this browser demo.</p>
+              <p className="self-center text-xs text-ink/45">Stays in memory for this session.</p>
               <Button
                 disabled={!textValue.trim()}
-                onClick={sendText}
+                onClick={handleSendText}
                 className="h-11 rounded-none border-2 border-ink bg-cobalt px-5 text-paper shadow-none hover:bg-ink"
               >
-                <MessageSquareText /> Add text
+                <MessageSquareText className="mr-2 h-4 w-4" /> Add text
               </Button>
             </div>
           </DialogContent>
@@ -633,13 +753,22 @@ export function PigeonExperience() {
   );
 }
 
-function FileList({ files, onRemove }: { files: Payload[]; onRemove: (id: string) => void }) {
+/**
+ * File List displaying real selected payloads
+ */
+function FileList({
+  files,
+  onRemove,
+}: {
+  files: TransferPayload[];
+  onRemove: (id: string) => void;
+}) {
   return (
     <div className="space-y-2">
       <div className="mb-4">
         <h2 className="font-display text-4xl font-extrabold leading-none">Ready to fly.</h2>
         <p className="mt-2 text-sm font-semibold text-ink/55">
-          {files.length} {files.length === 1 ? "thing" : "things"} selected
+          {files.length} {files.length === 1 ? "file" : "files"} selected
         </p>
       </div>
       {files.map((file) => (
@@ -656,7 +785,7 @@ function FileList({ files, onRemove }: { files: Payload[]; onRemove: (id: string
             {file.text && <p className="mt-2 line-clamp-2 text-sm text-ink/65">{file.text}</p>}
           </div>
           <IconButton label={`Remove ${file.name}`} onClick={() => onRemove(file.id)}>
-            <Trash2 />
+            <Trash2 className="h-4 w-4" />
           </IconButton>
         </div>
       ))}
@@ -664,42 +793,36 @@ function FileList({ files, onRemove }: { files: Payload[]; onRemove: (id: string
   );
 }
 
-/** The signature moment: a full-width QR poster. */
-function QrMoment({
-  stage,
-  files,
+/**
+ * The Signature Code Moment: Displays the short temporary code (OPEN → DROP → CODE → DONE)
+ */
+function CodeMoment({
+  appState,
+  room,
   minutes,
   seconds,
   copied,
   onCopy,
   onShare,
-  onConnect,
-  onReceive,
   onReset,
-  downloaded,
-  onDownload,
-  onDownloadAll,
+  onSwitchToReceive,
 }: {
-  stage: Stage;
-  files: Payload[];
+  appState: AppState;
+  room: TransferRoom;
   minutes: string;
   seconds: string;
   copied: boolean;
   onCopy: () => void;
   onShare: () => void;
-  onConnect: () => void;
-  onReceive: () => void;
   onReset: () => void;
-  downloaded: string[];
-  onDownload: (id: string) => void;
-  onDownloadAll: () => void;
+  onSwitchToReceive: () => void;
 }) {
-  if (stage === "expired") {
+  if (appState === "EXPIRED") {
     return (
       <section className="grid place-items-center border-2 border-ink bg-ink px-6 py-24 text-center text-paper">
         <div>
           <span className="mx-auto block w-40 rotate-6 text-paper">
-            <Pigeon mood="idle" wingClass="fill-coral" beakClass="fill-acid" />
+            <Pigeon state="expired" wingClass="fill-coral" beakClass="fill-acid" />
           </span>
           <Clock3 className="mx-auto mt-6 h-10 w-10 text-coral" />
           <h2 className="mt-4 font-display text-5xl font-extrabold leading-none">
@@ -712,36 +835,29 @@ function QrMoment({
             onClick={onReset}
             className="mt-7 h-12 rounded-none border-2 border-acid bg-acid px-6 text-ink hover:bg-paper"
           >
-            <RotateCcw /> New Pigeon
+            <RotateCcw className="mr-2 h-4 w-4" /> New Pigeon
           </Button>
         </div>
       </section>
     );
   }
 
-  const statusLabel =
-    stage === "ready"
-      ? "Waiting for your laptop…"
-      : stage === "connected"
-        ? "Laptop connected"
-        : "Delivered. Nice.";
-  const receiverOpen = stage === "connected" || stage === "received";
-
   return (
     <div className="grid gap-4">
       <section className="relative overflow-hidden border-2 border-ink bg-ink text-paper">
         <div className="pointer-events-none absolute -left-10 bottom-[-8%] w-64 rotate-12 text-cobalt opacity-90 sm:w-80">
           <Pigeon
-            mood={stage === "received" ? "done" : "waiting"}
+            state="ready"
             wingClass="fill-acid"
             beakClass="fill-coral"
             eyeClass="fill-paper"
           />
         </div>
+
         <div className="relative grid gap-8 p-5 sm:p-10 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
           <div className="max-w-2xl">
             <span className="inline-block border-2 border-acid px-3 py-1 text-[11px] font-extrabold uppercase tracking-[0.2em] text-acid">
-              Room {ROOM_CODE}
+              Temporary Code Ready
             </span>
             <h2 className="mt-5 font-display text-5xl font-extrabold uppercase leading-[0.85] tracking-[-0.02em] sm:text-7xl">
               Your pigeon
@@ -749,186 +865,364 @@ function QrMoment({
               is ready.
             </h2>
             <p className="mt-4 font-display text-2xl font-bold text-acid sm:text-3xl">
-              Scan from your laptop.
+              Go to pigeon.app on your laptop or board.
             </p>
 
-            <div className="mt-7 grid gap-2 sm:max-w-md">
-              <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-1 border-2 border-paper/25 bg-paper/5 p-1.5">
-                <span className="truncate pl-2 font-mono text-sm">{ROOM_URL}</span>
-                <IconButton
-                  label="Copy link"
-                  onClick={onCopy}
-                  className="text-paper hover:bg-paper/15 hover:text-paper"
-                >
-                  {copied ? <Check /> : <Copy />}
-                </IconButton>
-                <IconButton
-                  label="Share"
-                  onClick={onShare}
-                  className="text-paper hover:bg-paper/15 hover:text-paper"
-                >
-                  <Share2 />
-                </IconButton>
+            {/* Prominent Code Card */}
+            <div className="mt-7 grid gap-3 sm:max-w-md">
+              <div className="border-2 border-paper/20 bg-surface/5 p-4">
+                <span className="label text-paper/60">Enter this code:</span>
+                <div className="mt-2 flex items-center justify-between gap-3">
+                  <span className="font-mono text-4xl font-extrabold tracking-[0.2em] text-acid sm:text-5xl">
+                    {room.code}
+                  </span>
+                  <div className="flex gap-1">
+                    <Button
+                      onClick={onCopy}
+                      variant="outline"
+                      className="h-11 rounded-none border-2 border-paper bg-paper text-ink hover:bg-acid hover:text-ink"
+                    >
+                      {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}{" "}
+                      {copied ? "Copied" : "Copy"}
+                    </Button>
+                    <Button
+                      onClick={onShare}
+                      variant="ghost"
+                      className="h-11 rounded-none text-paper hover:bg-paper/15"
+                    >
+                      <Share2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
               </div>
+
+              {/* Status and countdown banner */}
               <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 bg-acid p-3 text-ink">
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-extrabold">{statusLabel}</p>
+                  <p className="truncate text-sm font-extrabold">Waiting for your laptop...</p>
                   <p className="text-xs font-semibold text-ink/60">
                     Expires in {minutes}:{seconds}
                   </p>
                 </div>
-                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-ink text-paper">
-                  {stage === "received" ? (
-                    <Check />
-                  ) : stage === "connected" ? (
-                    <Wifi />
-                  ) : (
-                    <LoaderCircle className="animate-spin" />
-                  )}
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-ink text-paper">
+                  <LoaderCircle className="h-4 w-4 animate-spin" />
                 </span>
               </div>
             </div>
 
-            <div className="mt-4 flex flex-wrap gap-2">
-              {stage === "ready" && (
-                <Button
-                  onClick={onConnect}
-                  className="h-11 rounded-none border-2 border-paper bg-paper text-ink hover:bg-acid"
-                >
-                  <Laptop /> Preview receiver
-                </Button>
-              )}
-              {stage === "connected" && (
-                <Button
-                  onClick={onReceive}
-                  className="h-11 rounded-none border-2 border-acid bg-acid text-ink hover:bg-paper"
-                >
-                  <MonitorDown /> Complete transfer
-                </Button>
-              )}
-              {stage === "received" && (
-                <Button
-                  onClick={onReset}
-                  className="h-11 rounded-none border-2 border-acid bg-acid text-ink hover:bg-paper"
-                >
-                  <Plus /> Send another
-                </Button>
-              )}
+            {/* Actions */}
+            <div className="mt-6 flex flex-wrap gap-3">
+              <Button
+                onClick={onSwitchToReceive}
+                className="h-12 rounded-none border-2 border-acid bg-acid px-5 text-ink hover:bg-paper"
+              >
+                <KeyRound className="mr-2 h-4 w-4" /> Test Receive Mode with this Code
+              </Button>
               <Button
                 onClick={onReset}
                 variant="ghost"
-                className="h-11 rounded-none text-paper/70 hover:bg-paper/10 hover:text-paper"
+                className="h-12 rounded-none text-paper/70 hover:bg-paper/10 hover:text-paper"
               >
-                Cancel room
+                Cancel Pigeon
               </Button>
             </div>
           </div>
 
-          <div className="relative mx-auto w-full max-w-[420px] rotate-1">
-            <div className="border-4 border-acid bg-paper p-3 shadow-poster">
-              <QrArt />
-              <div className="mt-3 flex items-center justify-between border-t-2 border-ink pt-2 text-ink">
-                <span className="font-mono text-xs font-bold">{ROOM_URL}</span>
-                <span className="font-mono text-xs font-bold text-coral">
-                  {minutes}:{seconds}
-                </span>
+          {/* Right Visual Poster Card */}
+          <div className="relative mx-auto w-full max-w-[380px] rotate-1">
+            <div className="border-4 border-acid bg-paper p-6 text-ink shadow-poster">
+              <span className="label text-coral">Step 03</span>
+              <h3 className="mt-2 font-display text-4xl font-extrabold uppercase leading-tight">
+                CODE → DONE
+              </h3>
+              <p className="mt-3 text-sm leading-relaxed text-ink/70">
+                1. Open <strong className="font-mono text-ink">pigeon.app</strong> on your computer.
+                <br />
+                2. Click <strong>Receive</strong>.
+                <br />
+                3. Type <strong className="font-mono text-cobalt">{room.code}</strong>.
+              </p>
+
+              <div className="mt-6 border-t-2 border-ink pt-4">
+                <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-ink/60">
+                  <span>Files in pouch:</span>
+                  <span>
+                    {room.payloads.length} ({formatSize(room.totalSize)})
+                  </span>
+                </div>
               </div>
             </div>
             <span className="absolute -bottom-4 -right-3 -rotate-6 border-2 border-ink bg-coral px-3 py-1.5 font-display text-sm font-extrabold text-paper">
-              POINT CAMERA HERE
+              ENTER CODE ON LAPTOP
             </span>
           </div>
         </div>
       </section>
-
-      <div className="grid gap-4 lg:grid-cols-12">
-        <section className="col-span-12 border-2 border-ink bg-surface p-5 lg:col-span-7">
-          <div className="flex items-center justify-between">
-            <span className="label">
-              In the pouch · {files.length} {files.length === 1 ? "item" : "items"}
-            </span>
-            <span className="text-xs font-bold">
-              {formatSize(files.reduce((sum, file) => sum + file.size, 0))}
-            </span>
-          </div>
-          <div className="mt-4 space-y-2">
-            {files.map((file) => (
-              <div
-                key={file.id}
-                className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 border-2 border-ink bg-paper p-3"
-              >
-                <span className="grid h-10 w-10 shrink-0 place-items-center bg-acid text-ink">
-                  <FileGlyph type={file.type} />
-                </span>
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-bold">{file.name}</p>
-                  <p className="text-xs text-ink/45">{formatSize(file.size)}</p>
-                </div>
-                {receiverOpen ? (
-                  <IconButton label={`Download ${file.name}`} onClick={() => onDownload(file.id)}>
-                    {downloaded.includes(file.id) ? <Check /> : <Download />}
-                  </IconButton>
-                ) : (
-                  <span className="text-xs font-bold uppercase tracking-[0.12em] text-ink/40">
-                    Waiting
-                  </span>
-                )}
-              </div>
-            ))}
-          </div>
-          {receiverOpen && (
-            <Button
-              onClick={onDownloadAll}
-              className="mt-4 h-11 w-full rounded-none border-2 border-ink bg-ink text-paper hover:bg-cobalt"
-            >
-              <Download /> {downloaded.length === files.length ? "Downloaded" : "Download all"}
-            </Button>
-          )}
-        </section>
-
-        <section className="col-span-12 flex flex-col border-2 border-ink bg-coral p-5 text-paper lg:col-span-5">
-          <span className="label text-paper/70">Laptop · receiver</span>
-          {receiverOpen ? (
-            <>
-              <h3 className="mt-3 font-display text-4xl font-extrabold leading-none">
-                Someone sent you something.
-              </h3>
-              <p className="mt-3 text-sm text-paper/85">
-                Grab it from the list. The room disappears when the clock runs out.
-              </p>
-            </>
-          ) : (
-            <>
-              <h3 className="mt-3 font-display text-4xl font-extrabold leading-none">
-                Waiting on the other side.
-              </h3>
-              <p className="mt-3 text-sm text-paper/85">Scan the code and this side lights up.</p>
-            </>
-          )}
-          <span className="mt-auto block w-28 self-end text-paper">
-            <Pigeon
-              mood={receiverOpen ? "done" : "waiting"}
-              wingClass="fill-ink/30"
-              beakClass="fill-acid"
-            />
-          </span>
-        </section>
-      </div>
     </div>
   );
 }
 
-function TransferVisual({ stage }: { stage: Stage }) {
-  const activeIndex = stage === "received" ? 2 : ["ready", "connected"].includes(stage) ? 1 : 0;
+/**
+ * Receiver Experience: Code entry, Connecting, Transfer animation, and Success/Download
+ */
+function ReceiveSection({
+  appState,
+  receiveCode,
+  codeError,
+  activeRoomCode,
+  room,
+  onCodeChange,
+  onSubmit,
+  onDownload,
+  onDownloadAll,
+  downloadedIds,
+  onReset,
+}: {
+  appState: AppState;
+  receiveCode: string;
+  codeError: string | null;
+  activeRoomCode?: string | undefined;
+  room: TransferRoom | null;
+  onCodeChange: (code: string) => void;
+  onSubmit: (e?: React.FormEvent) => void;
+  onDownload: (payload: TransferPayload) => void;
+  onDownloadAll: (payloads: TransferPayload[]) => void;
+  downloadedIds: string[];
+  onReset: () => void;
+}) {
+  const isTransferring = ["CONNECTING", "SENDING", "RECEIVING"].includes(appState);
+  const isSuccess = appState === "SUCCESS" && room != null;
+
+  return (
+    <div className="grid gap-4">
+      {isSuccess ? (
+        /* SUCCESS SCREEN: "GOT IT." */
+        <section className="relative border-2 border-ink bg-surface p-6 shadow-poster sm:p-10">
+          <div className="mx-auto max-w-3xl text-center">
+            <span className="mx-auto block w-32 text-cobalt">
+              <Pigeon state="success" wingClass="fill-acid" beakClass="fill-coral" />
+            </span>
+
+            <span className="label mt-4 block text-acid">Transfer Complete</span>
+            <h2 className="mt-2 font-display text-6xl font-extrabold uppercase leading-none tracking-tight sm:text-7xl">
+              Got it.
+            </h2>
+            <p className="mt-3 text-sm font-semibold text-ink/60 sm:text-base">
+              The pigeon delivered your payload from the sender.
+            </p>
+
+            {/* File List for Download */}
+            <div className="mt-8 space-y-3 text-left">
+              {room.payloads.map((payload) => (
+                <div
+                  key={payload.id}
+                  className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 border-2 border-ink bg-paper p-4"
+                >
+                  <span className="grid h-12 w-12 shrink-0 place-items-center bg-acid text-ink">
+                    <FileGlyph type={payload.type} />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="truncate text-base font-bold text-ink">{payload.name}</p>
+                    <p className="text-xs font-semibold text-ink/50">
+                      {formatSize(payload.size)} · {payload.type}
+                    </p>
+                    {payload.text && (
+                      <p className="mt-2 rounded-none border border-ink/20 bg-surface p-2 text-sm text-ink/75">
+                        {payload.text}
+                      </p>
+                    )}
+                  </div>
+                  <Button
+                    onClick={() => onDownload(payload)}
+                    className="h-11 rounded-none border-2 border-ink bg-cobalt px-4 text-paper hover:bg-ink"
+                  >
+                    {downloadedIds.includes(payload.id) ? (
+                      <>
+                        <Check className="mr-2 h-4 w-4" /> Downloaded
+                      </>
+                    ) : (
+                      <>
+                        <Download className="mr-2 h-4 w-4" /> Download
+                      </>
+                    )}
+                  </Button>
+                </div>
+              ))}
+            </div>
+
+            {/* Batch actions */}
+            <div className="mt-6 flex flex-wrap justify-center gap-3">
+              {room.payloads.length > 1 && (
+                <Button
+                  onClick={() => onDownloadAll(room.payloads)}
+                  className="h-12 rounded-none border-2 border-ink bg-ink px-6 text-paper hover:bg-cobalt"
+                >
+                  <Download className="mr-2 h-4 w-4" /> Download All ({room.payloads.length} files)
+                </Button>
+              )}
+              <Button
+                onClick={onReset}
+                variant="outline"
+                className="h-12 rounded-none border-2 border-ink bg-paper px-6 text-ink hover:bg-ink hover:text-paper"
+              >
+                <Plus className="mr-2 h-4 w-4" /> Receive another file
+              </Button>
+            </div>
+          </div>
+        </section>
+      ) : isTransferring ? (
+        /* ACTIVE IN-FLIGHT HANDOFF ANIMATION SCREEN */
+        <section className="relative border-2 border-ink bg-ink p-8 text-center text-paper shadow-poster sm:p-14">
+          <div className="mx-auto max-w-xl">
+            <span className="label text-acid">
+              {appState === "CONNECTING"
+                ? "Connecting"
+                : appState === "SENDING"
+                  ? "Pigeon In Flight"
+                  : "Touchdown"}
+            </span>
+
+            <h2 className="mt-3 font-display text-4xl font-extrabold uppercase leading-tight sm:text-5xl">
+              {appState === "CONNECTING" && "Pairing with phone…"}
+              {appState === "SENDING" && "Carrying your file across…"}
+              {appState === "RECEIVING" && "Pigeon has landed! Settling…"}
+            </h2>
+
+            {/* Centerpiece Pigeon executing signature flight sequences */}
+            <div className="my-10">
+              <span className="mx-auto block w-36 text-cobalt sm:w-44">
+                <Pigeon
+                  state={
+                    appState === "SENDING"
+                      ? "sending"
+                      : appState === "RECEIVING"
+                        ? "receiving"
+                        : "waiting"
+                  }
+                  wingClass="fill-acid"
+                  beakClass="fill-coral"
+                  parcelClass="fill-coral"
+                />
+              </span>
+            </div>
+
+            <p className="font-mono text-sm text-paper/70">
+              Code: <strong className="text-acid">{room?.code ?? receiveCode}</strong>
+            </p>
+          </div>
+        </section>
+      ) : (
+        /* CODE ENTRY SCREEN */
+        <section className="relative border-2 border-ink bg-surface p-6 shadow-poster sm:p-10">
+          <div className="mx-auto max-w-2xl">
+            <div className="flex items-center justify-between">
+              <span className="label">Receiver · 02</span>
+              <span className="h-2.5 w-2.5 rounded-full bg-cobalt" />
+            </div>
+
+            <h2 className="mt-4 font-display text-4xl font-extrabold uppercase tracking-tight sm:text-6xl">
+              Receive a file.
+            </h2>
+            <p className="mt-2 text-base text-ink/65">
+              Enter the short code shown on the sender’s phone or computer.
+            </p>
+
+            <form onSubmit={onSubmit} className="mt-8 space-y-5">
+              <div>
+                <label htmlFor="pigeon-code-input" className="label mb-2 block text-ink">
+                  Pigeon Code
+                </label>
+                <div className="relative">
+                  <input
+                    id="pigeon-code-input"
+                    type="text"
+                    value={receiveCode}
+                    onChange={(e) => onCodeChange(e.target.value.toUpperCase())}
+                    placeholder="K7M4-PQ"
+                    maxLength={10}
+                    autoFocus
+                    className={cn(
+                      "h-16 w-full border-2 border-ink bg-paper p-4 font-mono text-3xl font-extrabold uppercase tracking-[0.2em] text-ink outline-none transition-all placeholder:text-ink/30 focus:border-cobalt focus:ring-4 focus:ring-cobalt/20",
+                      codeError && "border-coral bg-coral/10",
+                    )}
+                  />
+                  <KeyRound className="pointer-events-none absolute right-4 top-1/2 h-6 w-6 -translate-y-1/2 text-ink/30" />
+                </div>
+                {codeError && <p className="mt-2 text-sm font-bold text-coral">{codeError}</p>}
+              </div>
+
+              {/* Memory room autofill helper chip for demonstration */}
+              {activeRoomCode && (
+                <div className="flex items-center justify-between border-2 border-dashed border-ink/30 bg-paper p-3 text-sm">
+                  <span className="font-semibold text-ink/70">
+                    Active code from your Send tab:{" "}
+                    <strong className="font-mono text-cobalt">{activeRoomCode}</strong>
+                  </span>
+                  <Button
+                    type="button"
+                    onClick={() => onCodeChange(activeRoomCode)}
+                    variant="ghost"
+                    className="h-8 rounded-none border border-ink bg-acid px-3 text-xs font-bold text-ink hover:bg-ink hover:text-paper"
+                  >
+                    Auto-fill
+                  </Button>
+                </div>
+              )}
+
+              <div className="pt-3">
+                <Button
+                  type="submit"
+                  className="h-14 w-full rounded-none border-2 border-ink bg-acid font-display text-lg font-extrabold uppercase tracking-wider text-ink hover:bg-ink hover:text-paper"
+                >
+                  Receive file <ArrowRight className="ml-2 h-5 w-5" />
+                </Button>
+              </div>
+            </form>
+
+            <div className="mt-10 border-t-2 border-ink/20 pt-6">
+              <span className="label text-ink/50">Prototype Note</span>
+              <p className="mt-1 text-xs text-ink/50">
+                Code <strong className="font-mono text-ink">K7M4-PQ</strong> is pre-seeded with
+                sample lecture notes so you can test receiving immediately. Or drop a file in the
+                Send tab to generate your own code.
+              </p>
+            </div>
+          </div>
+        </section>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Route Step Timeline
+ */
+function TransferVisual({ appState }: { appState: AppState }) {
+  const activeIndex =
+    appState === "SUCCESS"
+      ? 2
+      : [
+            "UPLOADING",
+            "READY",
+            "WAITING_FOR_RECEIVER",
+            "CONNECTING",
+            "SENDING",
+            "RECEIVING",
+          ].includes(appState)
+        ? 1
+        : 0;
+
   const labels = ["Tagged on phone", "In flight", "Landed on laptop"];
+  const pigeonState = getPigeonState(appState);
+
   return (
     <section className="flex min-h-64 flex-col border-2 border-ink bg-ink p-5 text-paper">
       <span className="label text-paper/50">The short route</span>
       <div className="my-7 flex items-center justify-between gap-3">
         <Smartphone className="h-7 w-7" />
         <span className="h-0.5 flex-1 bg-paper/20" />
-        <span className={cn("w-16 text-cobalt", stage === "uploading" && "animate-pigeon")}>
-          <Pigeon mood="flying" wingClass="fill-acid" beakClass="fill-coral" />
+        <span className="w-16 text-cobalt">
+          <Pigeon state={pigeonState} parcelClass="fill-coral" />
         </span>
         <span className="h-0.5 flex-1 bg-paper/20" />
         <Laptop className="h-7 w-7" />
@@ -960,42 +1254,54 @@ function TransferVisual({ stage }: { stage: Stage }) {
   );
 }
 
+/**
+ * Payload summary card
+ */
 function PayloadPanel({
   files,
   totalSize,
-  stage,
+  appState,
 }: {
-  files: Payload[];
+  files: TransferPayload[];
   totalSize: number;
-  stage: Stage;
+  appState: AppState;
 }) {
   return (
-    <section className="border-2 border-ink bg-acid p-5">
+    <section className="border-2 border-ink bg-acid p-5 text-ink">
       <div className="flex items-center justify-between">
-        <span className="label">Payload</span>
-        <span className="text-xs font-bold">{files.length} files</span>
+        <span className="label text-ink/70">Payload</span>
+        <span className="text-xs font-bold">
+          {files.length} {files.length === 1 ? "file" : "files"}
+        </span>
       </div>
       <div className="mt-5 space-y-3">
-        {files.slice(0, 3).map((file) => (
-          <div key={file.id} className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 text-sm">
-            <span className="truncate font-bold">{file.name}</span>
-            <span className="shrink-0 text-ink/50">{formatSize(file.size)}</span>
-          </div>
-        ))}
+        {files.length === 0 ? (
+          <p className="text-sm font-semibold text-ink/60">No files staged yet.</p>
+        ) : (
+          files.slice(0, 3).map((file) => (
+            <div key={file.id} className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 text-sm">
+              <span className="truncate font-bold">{file.name}</span>
+              <span className="shrink-0 text-ink/60">{formatSize(file.size)}</span>
+            </div>
+          ))
+        )}
       </div>
       <div className="mt-5 flex items-center justify-between border-t-2 border-ink pt-3 text-xs font-extrabold uppercase tracking-[0.12em]">
-        <span>{stage === "received" ? "Delivered" : "Ready"}</span>
+        <span>{appState === "SUCCESS" ? "Delivered" : "Status"}</span>
         <span>{formatSize(totalSize)}</span>
       </div>
     </section>
   );
 }
 
-function CampaignSections() {
+/**
+ * Marketing & Campaign posters below the fold
+ */
+function CampaignSections({ onSwitchToReceive }: { onSwitchToReceive: () => void }) {
   const oldWay = ["Open Gmail", "Login", "Compose", "Attach", "Send", "Open laptop", "Download"];
   return (
     <div>
-      {/* POSTER — the stupid old way */}
+      {/* POSTER 1 — The stupid old way */}
       <section className="border-t-2 border-ink">
         <div className="mx-auto grid max-w-[1440px] gap-10 px-4 py-20 sm:px-7 lg:grid-cols-12 lg:py-28">
           <div className="lg:col-span-7">
@@ -1018,14 +1324,14 @@ function CampaignSections() {
             <div className="mt-8 border-2 border-ink bg-cobalt p-6 text-paper">
               <p className="label text-paper/60">Or</p>
               <p className="mt-3 font-display text-4xl font-extrabold leading-none">
-                Drop → Scan → Done.
+                Drop → Code → Done.
               </p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* POSTER — anything goes */}
+      {/* POSTER 2 — Anything goes */}
       <section className="border-y-2 border-ink bg-coral px-4 py-20 text-paper sm:px-7 lg:py-28">
         <div className="mx-auto grid max-w-[1440px] items-center gap-12 lg:grid-cols-2">
           <div>
@@ -1043,7 +1349,7 @@ function CampaignSections() {
               )}
             </div>
           </div>
-          <div className="relative min-h-[22rem] overflow-hidden border-2 border-ink bg-paper p-7">
+          <div className="relative min-h-[22rem] overflow-hidden border-2 border-ink bg-paper p-7 text-ink">
             <div className="absolute left-7 top-7 grid h-28 w-18 place-items-center border-2 border-ink bg-ink px-3 text-paper">
               <Smartphone className="h-10 w-10" />
             </div>
@@ -1052,20 +1358,24 @@ function CampaignSections() {
             </div>
             <span className="absolute left-[34%] top-[30%] w-44 -rotate-6 text-cobalt sm:w-56">
               <Pigeon
-                mood="carrying"
+                state="sending"
                 wingClass="fill-acid"
                 beakClass="fill-coral"
                 parcelClass="fill-coral"
               />
             </span>
-            <div className="absolute bottom-6 left-6 border-2 border-ink bg-acid px-4 py-2 text-sm font-extrabold text-ink">
-              Works the other way, too.
-            </div>
+            <button
+              type="button"
+              onClick={onSwitchToReceive}
+              className="absolute bottom-6 left-6 border-2 border-ink bg-acid px-4 py-2 text-sm font-extrabold text-ink transition-colors hover:bg-ink hover:text-paper"
+            >
+              Works the other way, too →
+            </button>
           </div>
         </div>
       </section>
 
-      {/* POSTER — three-beat manifesto */}
+      {/* POSTER 3 — Three-beat manifesto */}
       <section className="mx-auto max-w-[1440px] px-4 py-20 sm:px-7 lg:py-28">
         <div className="grid gap-4 lg:grid-cols-3">
           {[
@@ -1085,8 +1395,8 @@ function CampaignSections() {
             },
             {
               n: "03",
-              t: "Scan",
-              d: "Point your laptop camera. It lands. Then it disappears.",
+              t: "Code",
+              d: "Type a 6-character code. The bird delivers it. Then it's gone.",
               bg: "bg-cobalt",
               fg: "text-paper",
             },
@@ -1099,7 +1409,7 @@ function CampaignSections() {
               <h3 className="mt-6 font-display text-6xl font-extrabold leading-none">{item.t}</h3>
               <p className="mt-3 max-w-[26ch] text-sm opacity-80">{item.d}</p>
               <span className="pointer-events-none absolute -bottom-6 -right-6 w-28 rotate-12 opacity-25">
-                <Pigeon mood="idle" wingClass="fill-acid" beakClass="fill-coral" />
+                <Pigeon state="idle" wingClass="fill-acid" beakClass="fill-coral" />
               </span>
             </div>
           ))}

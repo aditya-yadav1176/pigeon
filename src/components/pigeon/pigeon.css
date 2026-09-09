@@ -1,116 +1,460 @@
 /**
- * Pigeon Character Animation System
+ * Pigeon Character Animation Engine (Phase 4.5 Refinement)
  *
- * Designed to feel physical, mechanical, slightly absurd, and snappy.
- * All animations respect the anti-pill, editorial aesthetic and
- * user prefers-reduced-motion settings.
+ * Smooth, organic, physical mascot motion with natural weight and follow-through.
+ * Strictly uses hardware-accelerated CSS transforms and opacity.
+ * Zero layout thrashing. Full prefers-reduced-motion accessibility support.
  */
 
-@keyframes pigeon-bob {
-  0%, 100% {
+/* ==========================================================================
+   1. ROOT & STAGE MOTIONS (Natural Weight & Follow-Through)
+   ========================================================================== */
+
+/** IDLE: Calm, organic breathing bob with subtle head posture */
+@keyframes pigeon-idle-bob {
+  0%,
+  100% {
     transform: translateY(0px) rotate(0deg);
   }
   50% {
-    transform: translateY(-5px) rotate(2deg);
+    transform: translateY(-2.5px) rotate(0.4deg);
   }
 }
 
-@keyframes pigeon-wing-flap {
-  0%, 100% {
-    transform: rotate(0deg);
+/** WAITING: Slower, patient idle breathing (3.4s) avoiding frantic repetition */
+@keyframes pigeon-idle-bob-slow {
+  0%,
+  100% {
+    transform: translateY(0px) rotate(0deg);
   }
   50% {
-    transform: rotate(-20deg) translateY(-2px);
+    transform: translateY(-1.5px) rotate(0.3deg);
   }
 }
 
-@keyframes pigeon-wing-idle-breath {
-  0%, 100% {
-    transform: rotate(0deg);
+/** DRAGGING: Perked up, alert anticipation bounce waiting to receive payload */
+@keyframes pigeon-drag-anticipate {
+  0%,
+  100% {
+    transform: translateY(-2px) rotate(-2deg);
   }
   50% {
-    transform: rotate(-6deg);
+    transform: translateY(-4.5px) rotate(-0.5deg);
   }
 }
 
-@keyframes pigeon-parcel-bob {
-  0%, 100% {
-    transform: rotate(-2deg);
+/** UPLOADING: Buoyant, steady work rhythm communicating continuous action */
+@keyframes pigeon-upload-bounce {
+  0%,
+  100% {
+    transform: translateY(0px) rotate(0deg);
   }
   50% {
-    transform: rotate(3deg);
+    transform: translateY(-4.5px) rotate(1.5deg);
   }
 }
 
-@keyframes pigeon-checkmark-pop {
-  from {
-    opacity: 0;
-    stroke-dashoffset: 40;
-    transform: scale(0.85);
+/**
+ * SIGNATURE SENDING SEQUENCE (1.9s)
+ * Natural physical progression with weight, crouch, thrust, and glide:
+ * 1. Weight shifts back
+ * 2. Crouch & anticipation dip
+ * 3. Power thrust & body lift upward
+ * 4. Forward surge
+ * 5. Aerodynamic glide
+ * 6. Settle in delivery-flight cruise
+ */
+@keyframes pigeon-sending-sequence {
+  0% {
+    transform: translate(0px, 0px) rotate(0deg);
   }
-  to {
-    opacity: 1;
-    stroke-dashoffset: 0;
-    transform: scale(1);
+  15% {
+    /* Step 1: Prepares, weight shifts back slightly */
+    transform: translate(-1px, 2px) rotate(-1.5deg);
   }
-}
-
-@keyframes pigeon-error-shake {
-  0%, 100% {
-    transform: rotate(0deg);
+  28% {
+    /* Step 2: Crouch & anticipation dip */
+    transform: translate(-2px, 3.5px) rotate(-3.5deg);
   }
-  20% {
-    transform: rotate(-4deg);
+  42% {
+    /* Step 3: Power thrust lift upward */
+    transform: translate(3px, -9px) rotate(4deg);
   }
-  40% {
-    transform: rotate(3deg);
-  }
-  60% {
-    transform: rotate(-2deg);
+  62% {
+    /* Step 4: Surges forward */
+    transform: translate(14px, -12px) rotate(5deg);
   }
   80% {
-    transform: rotate(1deg);
+    /* Step 5: Glides across */
+    transform: translate(22px, -7px) rotate(2deg);
+  }
+  100% {
+    /* Step 6: Settles in steady cruise */
+    transform: translate(25px, -3px) rotate(0.5deg);
   }
 }
 
-/* Wing flap classes with exact transform-origin of 52px 54px */
-.pigeon-wing {
-  transform-origin: 52px 54px;
-  animation: pigeon-wing-flap 0.65s ease-in-out infinite;
+/** RECEIVING: Approaches from flight, flares wings, lands with organic compression (1.35s) */
+@keyframes pigeon-receiving-sequence {
+  0% {
+    transform: translate(-20px, -16px) rotate(-5deg);
+    opacity: 0.3;
+  }
+  45% {
+    /* Wing flare and air-braking deceleration */
+    transform: translate(-6px, -4px) rotate(3deg);
+    opacity: 1;
+  }
+  72% {
+    /* Touchdown impact compression (body squashes down 3.5px on impact) */
+    transform: translate(0px, 3.5px) rotate(0.5deg);
+  }
+  88% {
+    /* Natural rebound from compression */
+    transform: translate(0px, -1px) rotate(0deg);
+  }
+  100% {
+    /* Settled standing posture */
+    transform: translate(0px, 0px) rotate(0deg);
+    opacity: 1;
+  }
 }
 
-.pigeon-wing-slow {
-  transform-origin: 52px 54px;
-  animation: pigeon-wing-idle-breath 1.8s ease-in-out infinite;
+/** SUCCESS: Touchdown rebound with proud chest lift (0.85s) */
+@keyframes pigeon-success-sequence {
+  0% {
+    transform: translate(0px, 0px) scale(1);
+  }
+  25% {
+    /* Soft chest puff lift */
+    transform: translateY(-6px) scale(1.04) rotate(1deg);
+  }
+  50% {
+    /* Natural landing settle */
+    transform: translateY(1.5px) scale(0.99) rotate(-0.5deg);
+  }
+  75% {
+    /* Micro rebound */
+    transform: translateY(-0.8px) scale(1.01);
+  }
+  100% {
+    transform: translate(0px, 0px) scale(1) rotate(0deg);
+  }
 }
 
-.pigeon-bob {
-  animation: pigeon-bob 1.4s ease-in-out infinite;
+/** ERROR: Short, sharp confused recoil shake (0.5s) */
+@keyframes pigeon-error-shake {
+  0%,
+  100% {
+    transform: translate(0px, 0px) rotate(0deg);
+  }
+  20% {
+    transform: translate(-3px, 1px) rotate(-4deg);
+  }
+  40% {
+    transform: translate(3px, -1px) rotate(3.5deg);
+  }
+  60% {
+    transform: translate(-2px, 0.5px) rotate(-2deg);
+  }
+  80% {
+    transform: translate(1px, 0px) rotate(1deg);
+  }
 }
 
-.pigeon-parcel-swing {
-  transform-origin: 61px 92px;
+/** EXPIRED: Quiet, gentle droop and fade retreat (0.8s) */
+@keyframes pigeon-expired-retreat {
+  0% {
+    opacity: 1;
+    transform: translateY(0px) rotate(0deg);
+  }
+  100% {
+    opacity: 0.65;
+    transform: translateY(2.5px) rotate(2deg);
+  }
+}
+
+/* ==========================================================================
+   2. EYE MOTIONS (Centered at 94.5px, 27px)
+   ========================================================================== */
+
+/** EYE: Natural, quick deadpan blink every 4.5s (stoic for 94%, 0.15s blink) */
+@keyframes pigeon-eye-blink {
+  0%,
+  94%,
+  98%,
+  100% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+  96% {
+    transform: scaleY(0.12);
+    opacity: 0.75;
+  }
+}
+
+/* ==========================================================================
+   3. WING MOTIONS (Anatomical Shoulder Origin: 65px 42px)
+   ========================================================================== */
+
+/** UPLOADING / FLAPPING: Natural bird wing stroke */
+@keyframes pigeon-wing-flap {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  50% {
+    transform: rotate(-20deg) translateY(-1.5px);
+  }
+}
+
+/** SENDING / FLIGHT: Energetic high-frequency flight stroke */
+@keyframes pigeon-wing-flight {
+  0%,
+  100% {
+    transform: rotate(3deg);
+  }
+  50% {
+    transform: rotate(-26deg) translateY(-2.5px);
+  }
+}
+
+/** WAITING / IDLE: Calm, subtle resting wing breath */
+@keyframes pigeon-wing-idle-breath {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  50% {
+    transform: rotate(-5deg);
+  }
+}
+
+/** DRAGGING: Wing perked in ready anticipation */
+@keyframes pigeon-wing-drag-ready {
+  0%,
+  100% {
+    transform: rotate(-8deg);
+  }
+  50% {
+    transform: rotate(-12deg) translateY(-1px);
+  }
+}
+
+/** RECEIVING: Flaring wing down for landing brake */
+@keyframes pigeon-wing-flare {
+  0% {
+    transform: rotate(-22deg);
+  }
+  50% {
+    transform: rotate(5deg);
+  }
+  100% {
+    transform: rotate(0deg);
+  }
+}
+
+/* ==========================================================================
+   4. PARCEL & LEGS MOTIONS (Origins: Parcel 60px 90px, Legs 64px 74px)
+   ========================================================================== */
+
+/** PARCEL BOB: Natural swinging motion while carried */
+@keyframes pigeon-parcel-bob {
+  0%,
+  100% {
+    transform: rotate(-2deg);
+  }
+  50% {
+    transform: rotate(3deg);
+  }
+}
+
+/** PARCEL SENDING: Dynamic inertia swing during takeoff and cruise */
+@keyframes pigeon-parcel-sending {
+  0% {
+    transform: rotate(0deg);
+  }
+  24% {
+    transform: rotate(-6deg) translateY(-1px);
+  }
+  45% {
+    transform: rotate(9deg) translateY(2px);
+  }
+  75% {
+    transform: rotate(-3deg);
+  }
+  100% {
+    transform: rotate(1.5deg);
+  }
+}
+
+/* ==========================================================================
+   5. SUCCESS CHECKMARK (Origin: 112px 64px)
+   ========================================================================== */
+
+/** CHECKMARK POP: Snappy spring reveal from chest */
+@keyframes pigeon-checkmark-pop {
+  0% {
+    opacity: 0;
+    stroke-dashoffset: 40;
+    transform: scale(0.4) translate(8px, 8px);
+  }
+  55% {
+    stroke-dashoffset: 0;
+    transform: scale(1.15) translate(-1px, -1px);
+  }
+  100% {
+    opacity: 1;
+    stroke-dashoffset: 0;
+    transform: scale(1) translate(0px, 0px);
+  }
+}
+
+/* ==========================================================================
+   6. UTILITY CLASS ASSIGNMENTS
+   ========================================================================== */
+
+.pigeon-idle-bob {
+  animation: pigeon-idle-bob 2.8s ease-in-out infinite;
+}
+
+.pigeon-idle-bob-slow {
+  animation: pigeon-idle-bob-slow 3.4s ease-in-out infinite;
+}
+
+.pigeon-drag-anticipate {
+  animation: pigeon-drag-anticipate 1.6s ease-in-out infinite;
+}
+
+.pigeon-upload-bounce {
+  animation: pigeon-upload-bounce 1.2s ease-in-out infinite;
+}
+
+.pigeon-sending-sequence {
+  animation: pigeon-sending-sequence 1.9s cubic-bezier(0.25, 1, 0.35, 1) forwards;
+}
+
+.pigeon-receiving-sequence {
+  animation: pigeon-receiving-sequence 1.35s cubic-bezier(0.2, 0.8, 0.25, 1) forwards;
+}
+
+.pigeon-success-sequence {
+  animation: pigeon-success-sequence 0.85s cubic-bezier(0.34, 1.4, 0.64, 1) forwards;
+}
+
+.pigeon-error-shake {
+  animation: pigeon-error-shake 0.5s ease-in-out forwards;
+}
+
+.pigeon-expired-retreat {
+  animation: pigeon-expired-retreat 0.8s ease-out forwards;
+}
+
+/* Eye */
+.pigeon-eye-blink {
+  transform-origin: 94.5px 27px;
+  animation: pigeon-eye-blink 4.5s ease-in-out infinite;
+}
+
+/* Wings (pivots around anatomical shoulder joint 65px 42px) */
+.pigeon-wing,
+.pigeon-wing-flap {
+  transform-origin: 65px 42px;
+  animation: pigeon-wing-flap 0.62s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+}
+
+.pigeon-wing-flight {
+  transform-origin: 65px 42px;
+  animation: pigeon-wing-flight 0.42s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.pigeon-wing-slow,
+.pigeon-wing-idle-breath {
+  transform-origin: 65px 42px;
+  animation: pigeon-wing-idle-breath 2.4s ease-in-out infinite;
+}
+
+.pigeon-wing-drag-ready {
+  transform-origin: 65px 42px;
+  animation: pigeon-wing-drag-ready 1.6s ease-in-out infinite;
+}
+
+.pigeon-wing-flare {
+  transform-origin: 65px 42px;
+  animation: pigeon-wing-flare 1.35s ease-out forwards;
+}
+
+/* Parcel */
+.pigeon-parcel-swing,
+.pigeon-parcel-bob {
+  transform-origin: 60px 89px;
   animation: pigeon-parcel-bob 1.2s ease-in-out infinite;
 }
 
+.pigeon-parcel-sending {
+  transform-origin: 60px 89px;
+  animation: pigeon-parcel-sending 1.9s cubic-bezier(0.25, 1, 0.35, 1) forwards;
+}
+
+/* Checkmark */
 .pigeon-checkmark {
-  transform-origin: 112px 66px;
-  animation: pigeon-checkmark-pop 0.35s ease-out both;
+  transform-origin: 112px 64px;
+  animation: pigeon-checkmark-pop 0.4s ease-out both;
+}
+
+/* Legs in flight (tucked aerodynamic pose) */
+.pigeon-legs-flying {
+  transform-origin: 64px 74px;
+  transform: rotate(10deg) translateY(-2px);
+  transition: transform 0.4s ease-out;
+}
+
+/* Legacy aliases */
+.pigeon-bob {
+  animation: pigeon-idle-bob 1.4s ease-in-out infinite;
 }
 
 .pigeon-error {
-  animation: pigeon-error-shake 0.5s ease-in-out;
+  animation: pigeon-error-shake 0.5s ease-in-out forwards;
 }
 
-/* Accessibility: strictly honor reduced-motion */
+/* ==========================================================================
+   7. ACCESSIBILITY: PREFERS-REDUCED-MOTION
+   ========================================================================== */
 @media (prefers-reduced-motion: reduce) {
+  .pigeon-idle-bob,
+  .pigeon-idle-bob-slow,
+  .pigeon-drag-anticipate,
+  .pigeon-upload-bounce,
+  .pigeon-sending-sequence,
+  .pigeon-receiving-sequence,
+  .pigeon-success-sequence,
+  .pigeon-error-shake,
+  .pigeon-expired-retreat,
   .pigeon-bob,
+  .pigeon-eye-blink,
   .pigeon-wing,
+  .pigeon-wing-flap,
+  .pigeon-wing-flight,
   .pigeon-wing-slow,
+  .pigeon-wing-idle-breath,
+  .pigeon-wing-drag-ready,
+  .pigeon-wing-flare,
   .pigeon-parcel-swing,
-  .pigeon-checkmark,
-  .pigeon-error {
+  .pigeon-parcel-bob,
+  .pigeon-parcel-sending,
+  .pigeon-checkmark {
     animation: none !important;
+    transition: none !important;
+  }
+
+  .pigeon-expired-retreat {
+    opacity: 0.65 !important;
+  }
+
+  .pigeon-checkmark {
+    opacity: 1 !important;
+    stroke-dashoffset: 0 !important;
+    transform: none !important;
   }
 }
-

@@ -101,4 +101,3 @@ export interface PigeonMarkProps {
   animated?: boolean | undefined;
   decorative?: boolean | undefined;
 }
-

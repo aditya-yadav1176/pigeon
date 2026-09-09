@@ -1,95 +1,30 @@
 import "./pigeon.css";
 
+import type React from "react";
 import { cn } from "@/lib/utils";
-import type { Mood, PigeonMarkProps, PigeonProps, PigeonState } from "./pigeon.types";
-
-/**
- * Maps the high-level transfer lifecycle state to the visual posture/mood
- * established in the original Pigeon design.
- */
-function deriveMoodFromState(state?: PigeonState, explicitMood?: Mood): Mood {
-  if (explicitMood) return explicitMood;
-  if (!state) return "idle";
-
-  switch (state) {
-    case "sending":
-      return "flying";
-    case "dragging":
-    case "uploading":
-      return "carrying";
-    case "ready":
-    case "waiting":
-    case "receiving":
-      return "waiting";
-    case "success":
-      return "done";
-    case "error":
-    case "expired":
-    case "idle":
-    default:
-      return "idle";
-  }
-}
-
-/**
- * Derives a human-readable accessible label based on the current state.
- */
-function getDefaultAriaLabel(state?: PigeonState, mood?: Mood): string {
-  if (state) {
-    switch (state) {
-      case "idle":
-        return "Pigeon: standing by";
-      case "dragging":
-        return "Pigeon: ready to receive file";
-      case "uploading":
-        return "Pigeon: uploading file";
-      case "ready":
-        return "Pigeon: ready for pickup";
-      case "waiting":
-        return "Pigeon: waiting for receiver";
-      case "sending":
-        return "Pigeon: file in flight";
-      case "receiving":
-        return "Pigeon: receiving file";
-      case "success":
-        return "Pigeon: transfer complete";
-      case "error":
-        return "Pigeon: transfer error";
-      case "expired":
-        return "Pigeon: room expired";
-    }
-  }
-
-  switch (mood) {
-    case "flying":
-      return "Pigeon: flying";
-    case "carrying":
-      return "Pigeon: carrying file";
-    case "waiting":
-      return "Pigeon: waiting";
-    case "done":
-      return "Pigeon: done";
-    case "idle":
-    default:
-      return "Pigeon";
-  }
-}
+import {
+  deriveMoodFromState,
+  getDefaultAriaLabel,
+  getPigeonMotionClasses,
+  isSequenceAnimation,
+} from "./pigeon.motion";
+import type { PigeonMarkProps, PigeonProps } from "./pigeon.types";
 
 /**
  * PIGEON — The geometric brand character.
  *
  * Minimalist, geometric, deadpan/smug personality.
  * Constructed purely from vector primitives with parametric anatomy and
- * state-driven posture transitions.
+ * state-driven posture transitions and physical motion engine (Phase 3).
  */
 export function Pigeon({
   state,
   mood,
   className,
-  bodyClass = "fill-current",
-  wingClass = "fill-paper/25",
-  beakClass = "fill-acid",
-  eyeClass = "fill-paper",
+  bodyClass,
+  wingClass,
+  beakClass,
+  eyeClass,
   parcelClass = "fill-coral",
   checkmarkClass = "stroke-acid",
   parts,
@@ -100,29 +35,18 @@ export function Pigeon({
   ...svgProps
 }: PigeonProps) {
   const effectiveMood = deriveMoodFromState(state, mood);
-
-  // Determine active animations
-  const isFlying = effectiveMood === "flying" || state === "sending";
-  const isWaiting = effectiveMood === "waiting" || state === "ready" || state === "receiving";
-  const isCarrying = effectiveMood === "carrying" || state === "dragging" || state === "uploading";
-  const isDone = effectiveMood === "done" || state === "success";
-  const isError = state === "error";
-
-  const rootAnimationClass = animated
-    ? cn(
-        isFlying && "pigeon-bob",
-        isError && "pigeon-error",
-        state === "expired" && "opacity-70 transition-opacity duration-300",
-      )
-    : undefined;
-
-  const wingAnimationClass = animated
-    ? cn((isFlying || state === "uploading") && "pigeon-wing", isWaiting && "pigeon-wing-slow")
-    : undefined;
+  const motion = getPigeonMotionClasses(state, mood, animated);
 
   // Visual visibility toggles
-  const showParcel = parts?.parcel?.visible ?? (isCarrying || state === "sending");
-  const showCheckmark = parts?.checkmark?.visible ?? isDone;
+  const showParcel =
+    parts?.parcel?.visible ??
+    (effectiveMood === "carrying" ||
+      state === "dragging" ||
+      state === "uploading" ||
+      state === "sending");
+
+  const showCheckmark =
+    parts?.checkmark?.visible ?? (effectiveMood === "done" || state === "success");
 
   // Accessible attributes
   const accessibleAttributes = decorative
@@ -132,166 +56,153 @@ export function Pigeon({
         "aria-label": ariaLabel ?? getDefaultAriaLabel(state, effectiveMood),
       };
 
+  const handleAnimationEnd = (e: React.AnimationEvent<SVGSVGElement>) => {
+    if (onAnimationComplete && isSequenceAnimation(e.animationName)) {
+      onAnimationComplete();
+    }
+  };
+
   return (
     <svg
       viewBox="0 0 130 112"
-      className={cn("block h-auto w-full overflow-visible", rootAnimationClass, className)}
-      onAnimationEnd={onAnimationComplete}
+      className={cn("block h-auto w-full overflow-visible", className)}
+      onAnimationEnd={handleAnimationEnd}
       {...accessibleAttributes}
       {...svgProps}
     >
-      {/* 1. Tail wedge */}
-      {parts?.tail?.visible !== false && (
-        <path
-          d="M6 40 L44 50 L42 78 Z"
-          className={cn(bodyClass, "opacity-90", parts?.tail?.className)}
-          fill={parts?.tail?.fill}
-          stroke={parts?.tail?.stroke}
-          strokeWidth={parts?.tail?.strokeWidth}
-        />
-      )}
+      {/* Animated Stage Group: handles body lift, bob, sending, receiving, error, and expired transforms */}
+      <g className={motion.stageClass}>
+        {/* 1. Tail: Layered organic curved feathers (Solid fills, 100% opacity) */}
+        {parts?.tail?.visible !== false && (
+          <g
+            className={parts?.tail?.className}
+            stroke={parts?.tail?.stroke}
+            strokeWidth={parts?.tail?.strokeWidth}
+          >
+            {/* Primary top feather: #246AFF */}
+            <path
+              d="M 42 50 C 30 50 18 54 8 60 C 8 61.5 9.5 62.8 11.5 62.8 C 21 62.8 31 61 41 58 Z"
+              fill={parts?.tail?.fill ?? "#246AFF"}
+            />
+            {/* Middle feather: #4F83E8 (Solid secondary blue) */}
+            <path
+              d="M 40 56 C 28 58 19 62 11 68 C 11.5 69.5 13 70.2 14.8 70 C 23 69 32 66.5 39 64 Z"
+              fill="#4F83E8"
+            />
+            {/* Under covert feather: #246AFF */}
+            <path
+              d="M 38 62 C 29 65 22 69 16 74 C 17 75.2 18.5 75.5 20 75 C 27 73 33 70 38 67 Z"
+              fill={parts?.tail?.fill ?? "#246AFF"}
+            />
+          </g>
+        )}
 
-      {/* 2. Body ellipse */}
-      {parts?.body?.visible !== false && (
-        <ellipse
-          cx="62"
-          cy="58"
-          rx="32"
-          ry="24"
-          transform="rotate(-8 62 58)"
-          className={cn(bodyClass, parts?.body?.className)}
-          fill={parts?.body?.fill}
-          stroke={parts?.body?.stroke}
-          strokeWidth={parts?.body?.strokeWidth}
-        />
-      )}
-
-      {/* 3. Head circle */}
-      {parts?.head?.visible !== false && (
-        <circle
-          cx="92"
-          cy="33"
-          r="16"
-          className={cn(bodyClass, parts?.head?.className)}
-          fill={parts?.head?.fill}
-          stroke={parts?.head?.stroke}
-          strokeWidth={parts?.head?.strokeWidth}
-        />
-      )}
-
-      {/* 4. Neck bridge */}
-      {parts?.neck?.visible !== false && (
-        <path
-          d="M74 40 L100 44 L86 62 Z"
-          className={cn(bodyClass, parts?.neck?.className)}
-          fill={parts?.neck?.fill}
-          stroke={parts?.neck?.stroke}
-          strokeWidth={parts?.neck?.strokeWidth}
-        />
-      )}
-
-      {/* 5. Beak wedge */}
-      {parts?.beak?.visible !== false && (
-        <path
-          d="M106 30 L128 36 L106 42 Z"
-          className={cn(beakClass, parts?.beak?.className)}
-          fill={parts?.beak?.fill}
-          stroke={parts?.beak?.stroke}
-          strokeWidth={parts?.beak?.strokeWidth}
-        />
-      )}
-
-      {/* 6. Eye unblinking circle */}
-      {parts?.eye?.visible !== false && (
-        <circle
-          cx="96"
-          cy="29"
-          r="3.6"
-          className={cn(eyeClass, parts?.eye?.className)}
-          fill={parts?.eye?.fill}
-          stroke={parts?.eye?.stroke}
-          strokeWidth={parts?.eye?.strokeWidth}
-        />
-      )}
-
-      {/* 7. Signature chevron wing */}
-      {parts?.wing?.visible !== false && (
-        <g
-          className={cn(wingAnimationClass, parts?.wing?.className)}
-          style={{ transformOrigin: "52px 54px" }}
-        >
-          <path
-            d="M40 50 L88 60 L54 80 Z"
-            className={cn(wingClass)}
-            fill={parts?.wing?.fill}
-            stroke={parts?.wing?.stroke}
-            strokeWidth={parts?.wing?.strokeWidth}
-          />
-        </g>
-      )}
-
-      {/* 8. Minimalist line legs */}
-      {parts?.legs?.visible !== false && (
-        <g className={parts?.legs?.className}>
-          <path
-            d="M60 80 L58 96 M58 96 L50 100 M58 96 L66 100"
-            className="stroke-current"
-            strokeWidth={parts?.legs?.strokeWidth ?? 4}
-            strokeLinecap="round"
-            fill="none"
-            stroke={parts?.legs?.stroke}
-          />
-          <path
-            d="M76 78 L76 94 M76 94 L68 98 M76 94 L84 98"
-            className="stroke-current opacity-60"
-            strokeWidth={parts?.legs?.strokeWidth ?? 4}
-            strokeLinecap="round"
-            fill="none"
-            stroke={parts?.legs?.stroke}
-          />
-        </g>
-      )}
-
-      {/* 9. Parcel (active carrying / transfer state) */}
-      {showParcel && (
-        <g
-          className={cn(
-            "pigeon-parcel",
-            animated && "pigeon-parcel-swing",
-            parts?.parcel?.className,
+        {/* 2. Body, Head & Neck: Unified organic avian contour (Primary Cobalt #246AFF, 100% opacity) */}
+        {parts?.body?.visible !== false &&
+          parts?.head?.visible !== false &&
+          parts?.neck?.visible !== false && (
+            <path
+              d="M 88 17 C 96 17 103.5 21.5 105.5 28.5 C 103.5 32 101 37.5 97 41.5 C 94 48 91 58 82 66 C 72 74 58 75.5 45 71.5 C 37 67.5 33 59.5 35 53.5 C 43 45.5 55 39.5 67 33.5 C 75 25.5 81 19 88 17 Z"
+              className={cn(bodyClass, parts?.body?.className ?? parts?.head?.className)}
+              fill={parts?.body?.fill ?? parts?.head?.fill ?? "#246AFF"}
+              stroke={parts?.body?.stroke ?? parts?.head?.stroke}
+              strokeWidth={parts?.body?.strokeWidth ?? parts?.head?.strokeWidth}
+            />
           )}
-        >
-          <rect
-            x="46"
-            y="92"
-            width="30"
-            height="24"
-            rx="3"
-            className={parcelClass}
-            fill={parts?.parcel?.fill}
-            stroke={parts?.parcel?.stroke}
-            strokeWidth={parts?.parcel?.strokeWidth}
-          />
-          <path d="M46 100 h30 M61 92 v24" className="stroke-paper" strokeWidth="3" fill="none" />
-        </g>
-      )}
 
-      {/* 10. Success checkmark */}
-      {showCheckmark && (
-        <path
-          d="M104 66 l8 9 l16 -20"
-          className={cn(
-            checkmarkClass,
-            animated && "pigeon-checkmark",
-            parts?.checkmark?.className,
-          )}
-          strokeWidth={parts?.checkmark?.strokeWidth ?? 8}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          fill="none"
-          stroke={parts?.checkmark?.stroke}
-        />
-      )}
+        {/* 3. Beak: Refined curved beak (Acid Lime #BFF100, 100% opacity) */}
+        {parts?.beak?.visible !== false && (
+          <path
+            d="M 105 28.5 C 112 29.8 119 32.2 123.5 34 C 118.5 36.8 111.5 38.8 104.5 38.8 C 104.8 35.5 104.9 32 105 28.5 Z"
+            className={cn(beakClass, parts?.beak?.className)}
+            fill={parts?.beak?.fill ?? "#BFF100"}
+            stroke={parts?.beak?.stroke}
+            strokeWidth={parts?.beak?.strokeWidth}
+          />
+        )}
+
+        {/* 4. Eye: Unblinking stoic eye (Cream #F8F1E5, 100% opacity) */}
+        {parts?.eye?.visible !== false && (
+          <circle
+            cx="94.5"
+            cy="27"
+            r="3.4"
+            className={cn(eyeClass, motion.eyeClass, parts?.eye?.className)}
+            fill={parts?.eye?.fill ?? "#F8F1E5"}
+            stroke={parts?.eye?.stroke}
+            strokeWidth={parts?.eye?.strokeWidth}
+          />
+        )}
+
+        {/* 5. Wing: Curved aerodynamic blade (Solid Lighter Blue #6F98E8, 100% opacity) */}
+        {parts?.wing?.visible !== false && (
+          <g
+            className={cn(motion.wingClass, parts?.wing?.className)}
+            style={{ transformOrigin: "65px 42px" }}
+          >
+            <path
+              d="M 66 41 C 78 43 85 51 83 59 C 80 66 67 74 46 78 C 50 72 55.5 67 56 62 C 57.5 53.5 60.5 45.5 66 41 Z"
+              className={cn(wingClass)}
+              fill={parts?.wing?.fill ?? "#6F98E8"}
+              stroke={parts?.wing?.stroke}
+              strokeWidth={parts?.wing?.strokeWidth}
+            />
+          </g>
+        )}
+
+        {/* 6. Legs: Shortened organic legs (~19% reduction), compact & grounded, 100% opacity */}
+        {parts?.legs?.visible !== false && (
+          <g
+            className={cn(motion.legsClass, parts?.legs?.className)}
+            strokeWidth={parts?.legs?.strokeWidth ?? 3.5}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            fill="none"
+          >
+            {/* Rear leg: #5D87D9 (Solid secondary blue, 100% opacity) */}
+            <path
+              d="M 76 72 Q 74.5 81 73 87.5 M 73 87.5 Q 67.5 89 62 89 M 73 87.5 Q 69 91.5 64 92.5 M 73 87.5 Q 76.5 89.5 80 89"
+              stroke={parts?.legs?.stroke ?? "#5D87D9"}
+            />
+            {/* Front leg: #246AFF (Primary cobalt, 100% opacity) */}
+            <path
+              d="M 64 74 Q 62.5 83 61 89 M 61 89 Q 55.5 91 50 91 M 61 89 Q 57 93.5 52 94.5 M 61 89 Q 64.5 91.5 68 91"
+              stroke={parts?.legs?.stroke ?? "#246AFF"}
+            />
+          </g>
+        )}
+
+        {/* 7. Parcel (carrying / transfer states) */}
+        {showParcel && (
+          <g className={cn("pigeon-parcel", motion.parcelClass, parts?.parcel?.className)}>
+            <rect
+              x="46"
+              y="92"
+              width="30"
+              height="24"
+              rx="3"
+              className={parcelClass}
+              fill={parts?.parcel?.fill}
+              stroke={parts?.parcel?.stroke}
+              strokeWidth={parts?.parcel?.strokeWidth}
+            />
+            <path d="M46 100 h30 M61 92 v24" className="stroke-paper" strokeWidth="3" fill="none" />
+          </g>
+        )}
+
+        {/* 8. Success checkmark */}
+        {showCheckmark && (
+          <path
+            d="M104 66 l8 9 l16 -20"
+            className={cn(checkmarkClass, motion.checkmarkClass, parts?.checkmark?.className)}
+            strokeWidth={parts?.checkmark?.strokeWidth ?? 8}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            fill="none"
+            stroke={parts?.checkmark?.stroke}
+          />
+        )}
+      </g>
     </svg>
   );
 }
@@ -308,15 +219,7 @@ export function PigeonMark({
 }: PigeonMarkProps) {
   return (
     <span className={cn("block w-9 shrink-0", className)}>
-      <Pigeon
-        mood={mood}
-        state={state}
-        animated={animated}
-        decorative={decorative}
-        wingClass="fill-cobalt"
-        beakClass="fill-acid"
-        eyeClass="fill-paper"
-      />
+      <Pigeon mood={mood} state={state} animated={animated} decorative={decorative} />
     </span>
   );
 }
