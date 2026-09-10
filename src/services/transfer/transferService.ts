@@ -14,6 +14,8 @@ export interface TransferPayload {
   file?: File | undefined;
   text?: string | undefined;
   blobUrl?: string | undefined;
+  downloadUrl?: string | undefined;
+  roomCode?: string | undefined;
 }
 
 export interface TransferRoom {
@@ -23,6 +25,15 @@ export interface TransferRoom {
   totalSize: number;
   createdAt: number;
   expiresAt: number;
+  status?: string | undefined;
+  receiverConnected?: boolean | undefined;
+}
+
+export interface RoomStatusInfo {
+  code: string;
+  status: string;
+  receiverConnected: boolean;
+  expiresAt: number;
 }
 
 export type UploadProgressCallback = (progress: number) => void;
@@ -30,7 +41,6 @@ export type UploadProgressCallback = (progress: number) => void;
 export interface ITransferService {
   /**
    * Upload files to create a temporary room.
-   * Preserves real browser File objects in memory for downloading.
    */
   uploadFiles(files: File[], onProgress?: UploadProgressCallback): Promise<TransferRoom>;
 
@@ -50,7 +60,7 @@ export interface ITransferService {
   joinRoom(code: string): Promise<TransferRoom>;
 
   /**
-   * Trigger a browser download for a specific payload using its in-memory File/Blob.
+   * Trigger a browser download for a specific payload.
    */
   downloadPayload(payload: TransferPayload): void;
 
@@ -63,4 +73,14 @@ export interface ITransferService {
    * Generate an unambiguous, memorable room code.
    */
   generateCode(): string;
+
+  /**
+   * Lightweight polling to check receiver connection status.
+   */
+  pollRoomStatus?(code: string): Promise<RoomStatusInfo | null>;
+
+  /**
+   * Mark room as completed after successful transfer/download.
+   */
+  completeRoom?(code: string): Promise<void>;
 }

@@ -10,6 +10,7 @@
 
 import type {
   ITransferService,
+  RoomStatusInfo,
   TransferPayload,
   TransferRoom,
   UploadProgressCallback,
@@ -181,6 +182,28 @@ export class MockTransferService implements ITransferService {
 
     if (shouldRevoke) {
       window.setTimeout(() => URL.revokeObjectURL(url), 1500);
+    }
+  }
+
+  async pollRoomStatus(code: string): Promise<RoomStatusInfo | null> {
+    const normalized = normalizeCode(code);
+    const room = this.rooms.get(normalized);
+    if (!room || Date.now() > room.expiresAt) {
+      return null;
+    }
+    return {
+      code: room.code,
+      status: room.status ?? "waiting",
+      receiverConnected: Boolean(room.receiverConnected),
+      expiresAt: room.expiresAt,
+    };
+  }
+
+  async completeRoom(code: string): Promise<void> {
+    const normalized = normalizeCode(code);
+    const room = this.rooms.get(normalized);
+    if (room) {
+      room.status = "completed";
     }
   }
 

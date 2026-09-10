@@ -47,11 +47,15 @@ export type AppState =
   | "UPLOADING"
   | "READY"
   | "WAITING_FOR_RECEIVER"
+  | "CONNECTED"
   | "RECEIVER_CODE_ENTRY"
   | "CONNECTING"
+  | "FILES_AVAILABLE"
+  | "DOWNLOADING"
   | "SENDING"
   | "RECEIVING"
   | "SUCCESS"
+  | "COMPLETED"
   | "ERROR"
   | "EXPIRED";
 
@@ -72,15 +76,22 @@ function getPigeonState(appState: AppState): PigeonState {
       return "ready";
     case "WAITING_FOR_RECEIVER":
       return "waiting";
+    case "CONNECTED":
+      return "sending";
     case "RECEIVER_CODE_ENTRY":
       return "idle";
     case "CONNECTING":
       return "waiting";
+    case "FILES_AVAILABLE":
+      return "ready";
+    case "DOWNLOADING":
+      return "receiving";
     case "SENDING":
       return "sending";
     case "RECEIVING":
       return "receiving";
     case "SUCCESS":
+    case "COMPLETED":
       return "success";
     case "ERROR":
       return "error";
@@ -151,8 +162,11 @@ export function PigeonExperience() {
   const [receivedRoom, setReceivedRoom] = useState<TransferRoom | null>(null);
 
   // Receiver code input
-  const [receiveCode, setReceiveCode] = useState("K7M4-PQ");
+  const [receiveCode, setReceiveCode] = useState("");
   const [codeError, setCodeError] = useState<string | null>(null);
+
+  // Upload error state
+  const [uploadError, setUploadError] = useState<{ title: string; detail: string } | null>(null);
 
   // Progress, countdown, dialogs
   const [progress, setProgress] = useState(0);
@@ -183,22 +197,53 @@ export function PigeonExperience() {
     }
   }, [seconds, appState]);
 
+  // Sender status polling: Detects when receiver connects or room expires
+  useEffect(() => {
+    if (appState !== "WAITING_FOR_RECEIVER" || !activeRoom?.code) return;
+
+    const interval = window.setInterval(async () => {
+      try {
+        const status = await transferService.pollRoomStatus?.(activeRoom.code);
+        if (!status) return;
+
+        if (status.status === "expired") {
+          setAppState("EXPIRED");
+        } else if (status.receiverConnected || status.status === "connected") {
+          // Receiver has connected! Animate handoff on sender screen
+          setAppState("CONNECTED");
+          window.setTimeout(() => {
+            setAppState("SENDING");
+            window.setTimeout(() => {
+              setAppState("COMPLETED");
+            }, 1800);
+          }, 600);
+        } else if (status.status === "completed") {
+          setAppState("COMPLETED");
+        }
+      } catch {
+        // Ignore transient polling network hiccups
+      }
+    }, 1500);
+
+    return () => window.clearInterval(interval);
+  }, [appState, activeRoom?.code]);
+
   // Mode switcher handler
   function switchMode(newMode: ActiveMode) {
     setMode(newMode);
     setCodeError(null);
     if (newMode === "receive") {
-      // If we already completed a transfer, keep success; otherwise open code entry
-      if (appState !== "SUCCESS") {
+      // If we already completed a transfer or have files available, keep it; otherwise open code entry
+      if (!["SUCCESS", "FILES_AVAILABLE", "DOWNLOADING", "COMPLETED"].includes(appState)) {
         setAppState("RECEIVER_CODE_ENTRY");
       }
       if (activeRoom) {
         setReceiveCode(activeRoom.code);
       }
     } else {
-      if (activeRoom && ["READY", "WAITING_FOR_RECEIVER"].includes(appState)) {
+      if (activeRoom && ["READY", "WAITING_FOR_RECEIVER", "CONNECTED", "COMPLETED"].includes(appState)) {
         // preserve active room state
-      } else if (appState !== "SUCCESS" && appState !== "FILE_SELECTED") {
+      } else if (!["SUCCESS", "FILE_SELECTED", "COMPLETED"].includes(appState)) {
         setAppState("IDLE");
       }
     }
@@ -206,16 +251,35 @@ export function PigeonExperience() {
 
   // Handle incoming file drops / selections
   function handleFiles(list: FileList | File[]) {
-    const incoming = Array.from(list);
-    if (incoming.some((file) => file.size > 250 * 1024 * 1024)) {
+    const rawIncoming = Array.from(list);
+    const validIncoming = rawIncoming.filter((f) => f.size > 0);
+
+    if (rawIncoming.length > 0 && validIncoming.length === 0) {
+      setUploadError({
+        title: "Empty file detected.",
+        detail: "Pigeon cannot carry empty 0-byte files. Please choose a valid file.",
+      });
       setAppState("ERROR");
       return;
     }
 
-    setSelectedFiles(incoming);
+    const combinedFiles = appState === "FILE_SELECTED" ? [...selectedFiles, ...validIncoming] : validIncoming;
+    const totalSize = combinedFiles.reduce((acc, file) => acc + file.size, 0);
+
+    if (totalSize > 250 * 1024 * 1024) {
+      setUploadError({
+        title: "That one’s too heavy.",
+        detail: "Pigeon carries up to 250 MB total per transfer. Please choose smaller files.",
+      });
+      setAppState("ERROR");
+      return;
+    }
+
+    setUploadError(null);
+    setSelectedFiles(combinedFiles);
     setActivePayloads(
-      incoming.map((file, index) => ({
-        id: `payload-${Date.now()}-${index}`,
+      combinedFiles.map((file, index) => ({
+        id: `payload-${file.name}-${file.size}-${index}`,
         name: file.name,
         size: file.size,
         type: file.type || "application/octet-stream",
@@ -235,14 +299,21 @@ export function PigeonExperience() {
     setAppState("UPLOADING");
     setTextOpen(false);
     setProgress(0);
+    setUploadError(null);
 
     try {
       const room = await transferService.uploadText(trimmed, (pct) => setProgress(pct));
       setActiveRoom(room);
       setActivePayloads(room.payloads);
       setAppState("WAITING_FOR_RECEIVER");
-      setSeconds(599);
-    } catch {
+      const remainingSeconds = Math.max(1, Math.floor((room.expiresAt - Date.now()) / 1000));
+      setSeconds(remainingSeconds);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Something went wrong while uploading.";
+      setUploadError({
+        title: "Could not upload note.",
+        detail: message,
+      });
       setAppState("ERROR");
     }
   }
@@ -252,14 +323,21 @@ export function PigeonExperience() {
     if (!selectedFiles.length) return;
     setAppState("UPLOADING");
     setProgress(0);
+    setUploadError(null);
 
     try {
       const room = await transferService.uploadFiles(selectedFiles, (pct) => setProgress(pct));
       setActiveRoom(room);
       setActivePayloads(room.payloads);
       setAppState("WAITING_FOR_RECEIVER");
-      setSeconds(599);
-    } catch {
+      const remainingSeconds = Math.max(1, Math.floor((room.expiresAt - Date.now()) / 1000));
+      setSeconds(remainingSeconds);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Something went wrong while uploading.";
+      setUploadError({
+        title: message.includes("250") ? "That one’s too heavy." : "Upload failed.",
+        detail: message,
+      });
       setAppState("ERROR");
     }
   }
@@ -269,7 +347,7 @@ export function PigeonExperience() {
     if (e) e.preventDefault();
     setCodeError(null);
 
-    const codeToLookup = receiveCode.trim();
+    const codeToLookup = receiveCode.trim().toUpperCase();
     if (!codeToLookup) {
       setCodeError("Please enter a Pigeon code.");
       return;
@@ -283,23 +361,25 @@ export function PigeonExperience() {
       setAppState("CONNECTING");
 
       window.setTimeout(() => {
-        // STEP 2: SENDING (1.8s signature sequence)
+        // STEP 2: SENDING (1.4s signature sequence)
         setAppState("SENDING");
 
         window.setTimeout(() => {
-          // STEP 3: RECEIVING (1.2s landing sequence)
+          // STEP 3: RECEIVING (1.0s landing sequence)
           setAppState("RECEIVING");
 
           window.setTimeout(() => {
-            // STEP 4: SUCCESS ("GOT IT.")
-            setAppState("SUCCESS");
-          }, 1200);
-        }, 1800);
+            // STEP 4: FILES_AVAILABLE
+            setAppState("FILES_AVAILABLE");
+          }, 1000);
+        }, 1400);
       }, 600);
-    } catch {
-      setCodeError(
-        `No active Pigeon found with code "${codeToLookup}". Check the code on the sender screen.`,
-      );
+    } catch (err) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : `No active Pigeon found with code "${codeToLookup}". Check the code on the sender screen.`;
+      setCodeError(message);
     }
   }
 
@@ -337,12 +417,28 @@ export function PigeonExperience() {
 
   function triggerDownload(payload: TransferPayload) {
     transferService.downloadPayload(payload);
-    setDownloadedIds((prev) => [...new Set([...prev, payload.id])]);
+    setDownloadedIds((prev) => {
+      const next = [...new Set([...prev, payload.id])];
+      if (receivedRoom && next.length >= receivedRoom.payloads.length) {
+        setAppState("COMPLETED");
+        if (receivedRoom.code) {
+          transferService.completeRoom?.(receivedRoom.code);
+        }
+      }
+      return next;
+    });
   }
 
   function triggerDownloadAll(payloads: TransferPayload[]) {
+    setAppState("DOWNLOADING");
     transferService.downloadAll(payloads);
     setDownloadedIds(payloads.map((p) => p.id));
+    window.setTimeout(() => {
+      setAppState("COMPLETED");
+      if (receivedRoom?.code) {
+        transferService.completeRoom?.(receivedRoom.code);
+      }
+    }, 1200);
   }
 
   const minutes = String(Math.floor(seconds / 60)).padStart(2, "0");
@@ -508,7 +604,7 @@ export function PigeonExperience() {
                   setCodeError(null);
                 }}
               />
-            ) : ["READY", "WAITING_FOR_RECEIVER", "EXPIRED"].includes(appState) && activeRoom ? (
+            ) : ["READY", "WAITING_FOR_RECEIVER", "CONNECTED", "COMPLETED", "EXPIRED"].includes(appState) && activeRoom ? (
               <CodeMoment
                 appState={appState}
                 room={activeRoom}
@@ -548,10 +644,11 @@ export function PigeonExperience() {
                           <X className="h-7 w-7" />
                         </span>
                         <h2 className="mt-5 font-display text-3xl font-extrabold">
-                          That one’s too heavy.
+                          {uploadError?.title ?? "Something went wrong."}
                         </h2>
                         <p className="mx-auto mt-2 max-w-xs text-sm leading-relaxed text-ink/60">
-                          This prototype carries files up to 250 MB. Nothing was stored.
+                          {uploadError?.detail ??
+                            "Pigeon carries files up to 250 MB. Please check your connection and try again."}
                         </p>
                         <Button
                           onClick={resetAll}
@@ -569,9 +666,7 @@ export function PigeonExperience() {
                           const next = activePayloads.filter((file) => file.id !== id);
                           setActivePayloads(next);
                           setSelectedFiles(
-                            selectedFiles.filter(
-                              (_, idx) => idx !== activePayloads.findIndex((p) => p.id === id),
-                            ),
+                            next.map((p) => p.file).filter(Boolean) as File[],
                           );
                           if (!next.length) setAppState("IDLE");
                         }}
@@ -865,7 +960,7 @@ function CodeMoment({
               is ready.
             </h2>
             <p className="mt-4 font-display text-2xl font-bold text-acid sm:text-3xl">
-              Go to pigeon.app on your laptop or board.
+              Open pigeon.app on your other device (laptop, phone, or board).
             </p>
 
             {/* Prominent Code Card */}
@@ -897,17 +992,39 @@ function CodeMoment({
               </div>
 
               {/* Status and countdown banner */}
-              <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 bg-acid p-3 text-ink">
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-extrabold">Waiting for your laptop...</p>
-                  <p className="text-xs font-semibold text-ink/60">
-                    Expires in {minutes}:{seconds}
-                  </p>
+              {appState === "CONNECTED" ? (
+                <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 bg-cobalt p-3 text-paper">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-extrabold">Receiver connected!</p>
+                    <p className="text-xs font-semibold text-paper/80">Carrying your files across...</p>
+                  </div>
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-paper text-ink">
+                    <LoaderCircle className="h-4 w-4 animate-spin" />
+                  </span>
                 </div>
-                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-ink text-paper">
-                  <LoaderCircle className="h-4 w-4 animate-spin" />
-                </span>
-              </div>
+              ) : appState === "COMPLETED" ? (
+                <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 bg-acid p-3 text-ink">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-extrabold">Transfer Complete!</p>
+                    <p className="text-xs font-semibold text-ink/70">Pigeon has delivered your files.</p>
+                  </div>
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-ink text-paper">
+                    <Check className="h-4 w-4" />
+                  </span>
+                </div>
+              ) : (
+                <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 bg-acid p-3 text-ink">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-extrabold">Waiting for receiver...</p>
+                    <p className="text-xs font-semibold text-ink/60">
+                      Expires in {minutes}:{seconds}
+                    </p>
+                  </div>
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-ink text-paper">
+                    <LoaderCircle className="h-4 w-4 animate-spin" />
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Actions */}
@@ -936,7 +1053,7 @@ function CodeMoment({
                 CODE → DONE
               </h3>
               <p className="mt-3 text-sm leading-relaxed text-ink/70">
-                1. Open <strong className="font-mono text-ink">pigeon.app</strong> on your computer.
+                1. Open <strong className="font-mono text-ink">pigeon.app</strong> on your other device.
                 <br />
                 2. Click <strong>Receive</strong>.
                 <br />
@@ -953,7 +1070,7 @@ function CodeMoment({
               </div>
             </div>
             <span className="absolute -bottom-4 -right-3 -rotate-6 border-2 border-ink bg-coral px-3 py-1.5 font-display text-sm font-extrabold text-paper">
-              ENTER CODE ON LAPTOP
+              ENTER CODE ON RECEIVER
             </span>
           </div>
         </div>
@@ -991,7 +1108,12 @@ function ReceiveSection({
   onReset: () => void;
 }) {
   const isTransferring = ["CONNECTING", "SENDING", "RECEIVING"].includes(appState);
-  const isSuccess = appState === "SUCCESS" && room != null;
+  const isSuccess =
+    (appState === "SUCCESS" ||
+      appState === "FILES_AVAILABLE" ||
+      appState === "DOWNLOADING" ||
+      appState === "COMPLETED") &&
+    room != null;
 
   return (
     <div className="grid gap-4">
@@ -1003,12 +1125,26 @@ function ReceiveSection({
               <Pigeon state="success" wingClass="fill-acid" beakClass="fill-coral" />
             </span>
 
-            <span className="label mt-4 block text-acid">Transfer Complete</span>
+            <span className="label mt-4 block text-acid">
+              {appState === "DOWNLOADING"
+                ? "Downloading Files..."
+                : appState === "COMPLETED"
+                  ? "Transfer Complete"
+                  : "Files Available"}
+            </span>
             <h2 className="mt-2 font-display text-6xl font-extrabold uppercase leading-none tracking-tight sm:text-7xl">
-              Got it.
+              {appState === "DOWNLOADING"
+                ? "Saving..."
+                : appState === "COMPLETED"
+                  ? "Delivered."
+                  : "Got it."}
             </h2>
             <p className="mt-3 text-sm font-semibold text-ink/60 sm:text-base">
-              The pigeon delivered your payload from the sender.
+              {appState === "DOWNLOADING"
+                ? "Streaming files to your device storage..."
+                : appState === "COMPLETED"
+                  ? "All files downloaded successfully."
+                  : `The pigeon delivered ${room.payloads.length} ${room.payloads.length === 1 ? "file" : "files"} from the sender.`}
             </p>
 
             {/* File List for Download */}
@@ -1083,7 +1219,7 @@ function ReceiveSection({
             </span>
 
             <h2 className="mt-3 font-display text-4xl font-extrabold uppercase leading-tight sm:text-5xl">
-              {appState === "CONNECTING" && "Pairing with phone…"}
+              {appState === "CONNECTING" && "Pairing with sender…"}
               {appState === "SENDING" && "Carrying your file across…"}
               {appState === "RECEIVING" && "Pigeon has landed! Settling…"}
             </h2>
