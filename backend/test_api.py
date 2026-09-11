@@ -21,7 +21,7 @@ def test_full_lifecycle():
     assert res.status_code == 201, res.text
     room_data = res.json()
     code = room_data["code"]
-    assert len(code) == 7  # XXXX-XX format
+    assert len(code) == 5  # 5-character format with no hyphen
     assert len(room_data["files"]) == 1
     file_id = room_data["files"][0]["id"]
     assert room_data["files"][0]["name"] == "DBMS_Notes.pdf"

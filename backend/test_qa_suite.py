@@ -22,6 +22,9 @@ def run_qa_suite():
         assert res.status_code == 201, f"Failed: {res.text}"
         data = res.json()
         code = data["code"]
+        assert len(code) == 5, f"Expected 5-character code, got {code}"
+        assert "-" not in code, f"Expected no hyphen in code, got {code}"
+        assert all(c in "ABCDEFGHJKLMNPQRSTUVWXYZ23456789" for c in code), f"Invalid char in code: {code}"
         file_id = data["files"][0]["id"]
         
         # Download
@@ -110,9 +113,9 @@ def run_qa_suite():
         results["5. Multiple Files Transfer"] = f"FAIL: {e}"
         print(f"[FAIL] Test 5: {e}")
 
-    # Test 6: Invalid Code Rejection (404)
+    # Test 6: Invalid Code Rejection
     try:
-        for bad_code in ["INVALID-00", "0000-00", "XXXX-YY"]:
+        for bad_code in ["INVALID", "00000", "XXXXX", "ZZ999"]:
             res = client.get(f"/api/rooms/{bad_code}")
             assert res.status_code == 404, f"Expected 404 for bad code {bad_code}, got {res.status_code}"
             

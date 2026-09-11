@@ -16,8 +16,8 @@ import type {
   UploadProgressCallback,
 } from "./transferService";
 
-// Unambiguous alphabet avoiding O/0, I/1, S/5
-const CODE_ALPHABET = "ABCDEFGHJKLMNPQRTUVWXYZ2346789";
+// Unambiguous alphabet avoiding 0, 1, I, O
+const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
 function normalizeCode(raw: string): string {
   return raw.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
@@ -27,6 +27,7 @@ export class MockTransferService implements ITransferService {
   /**
    * In-memory storage for active rooms during the browser session.
    * Maps normalized code (e.g. "K7M4PQ") to TransferRoom.
+   * Maps normalized code (e.g. "K7M4P") to TransferRoom.
    */
   private rooms = new Map<string, TransferRoom>();
 
@@ -51,9 +52,9 @@ export class MockTransferService implements ITransferService {
       },
     ];
 
-    this.rooms.set("K7M4PQ", {
-      code: "K7M4-PQ",
-      url: "pigeon.app/r/K7M4-PQ",
+    this.rooms.set("K7M4P", {
+      code: "K7M4P",
+      url: "pigeon.app/r/K7M4P",
       payloads: demoPayloads,
       totalSize: 29_000_000,
       createdAt: Date.now(),
@@ -62,15 +63,11 @@ export class MockTransferService implements ITransferService {
   }
 
   generateCode(): string {
-    let part1 = "";
-    let part2 = "";
-    for (let i = 0; i < 4; i++) {
-      part1 += CODE_ALPHABET.charAt(Math.floor(Math.random() * CODE_ALPHABET.length));
+    let code = "";
+    for (let i = 0; i < 5; i++) {
+      code += CODE_ALPHABET.charAt(Math.floor(Math.random() * CODE_ALPHABET.length));
     }
-    for (let i = 0; i < 2; i++) {
-      part2 += CODE_ALPHABET.charAt(Math.floor(Math.random() * CODE_ALPHABET.length));
-    }
-    return `${part1}-${part2}`;
+    return code;
   }
 
   async uploadFiles(files: File[], onProgress?: UploadProgressCallback): Promise<TransferRoom> {

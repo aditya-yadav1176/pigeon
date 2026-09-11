@@ -7,6 +7,8 @@ from app.storage import delete_room_storage
 
 # Unambiguous alphabet avoiding O/0, I/1, S/5
 CODE_ALPHABET = "ABCDEFGHJKLMNPQRTUVWXYZ2346789"
+# Unambiguous alphabet avoiding 0, 1, I, O
+CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 
 class StoredFile:
     def __init__(self, file_id: str, name: str, size: int, content_type: str, file_path: str):
@@ -53,6 +55,7 @@ class Room:
 class RoomManager:
     def __init__(self):
         # Maps normalized uppercase code (e.g. "K7M4PQ") to Room
+        # Maps normalized uppercase code (e.g. "K7M4P") to Room
         self.rooms: Dict[str, Room] = {}
 
     @staticmethod
@@ -64,11 +67,13 @@ class RoomManager:
             part1 = "".join(secrets.choice(CODE_ALPHABET) for _ in range(4))
             part2 = "".join(secrets.choice(CODE_ALPHABET) for _ in range(2))
             code = f"{part1}-{part2}"
+            code = "".join(secrets.choice(CODE_ALPHABET) for _ in range(5))
             normalized = self.normalize_code(code)
             if normalized not in self.rooms:
                 return code
         # Fallback if busy
         return f"{secrets.token_hex(2).upper()}-{secrets.token_hex(1).upper()}"
+        return "".join(secrets.choice(CODE_ALPHABET) for _ in range(5))
 
     def create_room(self) -> Room:
         code = self.generate_code()

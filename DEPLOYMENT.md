@@ -1,4 +1,4 @@
-﻿# PIGEON — Deployment & Real Internet Testing Guide
+# PIGEON — Deployment & Real Internet Testing Guide
 
 This guide details how to take **PIGEON** from local development to the public internet across real devices (e.g., Phone on 4G/5G mobile data ↔ Laptop on home/office Wi-Fi).
 
@@ -132,6 +132,7 @@ Under **Environment Variables**, add:
    - In the **Send** tab, tap to select a photo, document, or paste a note.
    - Tap **Send across**.
    - Verify upload progress bar reaches 100% and a 6-character room code appears (e.g., `ABCD-EF`).
+   - Verify upload progress bar reaches 100% and a 5-character room code appears (e.g., `K7M4P`).
 2. **On Laptop (Home/Office Wi-Fi)**:
    - Open browser: `https://<your-app-name>.vercel.app`
    - Click **Receive** tab.

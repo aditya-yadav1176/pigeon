@@ -241,7 +241,10 @@ export function PigeonExperience() {
         setReceiveCode(activeRoom.code);
       }
     } else {
-      if (activeRoom && ["READY", "WAITING_FOR_RECEIVER", "CONNECTED", "COMPLETED"].includes(appState)) {
+      if (
+        activeRoom &&
+        ["READY", "WAITING_FOR_RECEIVER", "CONNECTED", "COMPLETED"].includes(appState)
+      ) {
         // preserve active room state
       } else if (!["SUCCESS", "FILE_SELECTED", "COMPLETED"].includes(appState)) {
         setAppState("IDLE");
@@ -263,7 +266,8 @@ export function PigeonExperience() {
       return;
     }
 
-    const combinedFiles = appState === "FILE_SELECTED" ? [...selectedFiles, ...validIncoming] : validIncoming;
+    const combinedFiles =
+      appState === "FILE_SELECTED" ? [...selectedFiles, ...validIncoming] : validIncoming;
     const totalSize = combinedFiles.reduce((acc, file) => acc + file.size, 0);
 
     if (totalSize > 250 * 1024 * 1024) {
@@ -604,7 +608,9 @@ export function PigeonExperience() {
                   setCodeError(null);
                 }}
               />
-            ) : ["READY", "WAITING_FOR_RECEIVER", "CONNECTED", "COMPLETED", "EXPIRED"].includes(appState) && activeRoom ? (
+            ) : ["READY", "WAITING_FOR_RECEIVER", "CONNECTED", "COMPLETED", "EXPIRED"].includes(
+                appState,
+              ) && activeRoom ? (
               <CodeMoment
                 appState={appState}
                 room={activeRoom}
@@ -665,9 +671,7 @@ export function PigeonExperience() {
                         onRemove={(id) => {
                           const next = activePayloads.filter((file) => file.id !== id);
                           setActivePayloads(next);
-                          setSelectedFiles(
-                            next.map((p) => p.file).filter(Boolean) as File[],
-                          );
+                          setSelectedFiles(next.map((p) => p.file).filter(Boolean) as File[]);
                           if (!next.length) setAppState("IDLE");
                         }}
                       />
@@ -996,7 +1000,9 @@ function CodeMoment({
                 <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 bg-cobalt p-3 text-paper">
                   <div className="min-w-0">
                     <p className="truncate text-sm font-extrabold">Receiver connected!</p>
-                    <p className="text-xs font-semibold text-paper/80">Carrying your files across...</p>
+                    <p className="text-xs font-semibold text-paper/80">
+                      Carrying your files across...
+                    </p>
                   </div>
                   <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-paper text-ink">
                     <LoaderCircle className="h-4 w-4 animate-spin" />
@@ -1006,7 +1012,9 @@ function CodeMoment({
                 <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 bg-acid p-3 text-ink">
                   <div className="min-w-0">
                     <p className="truncate text-sm font-extrabold">Transfer Complete!</p>
-                    <p className="text-xs font-semibold text-ink/70">Pigeon has delivered your files.</p>
+                    <p className="text-xs font-semibold text-ink/70">
+                      Pigeon has delivered your files.
+                    </p>
                   </div>
                   <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-ink text-paper">
                     <Check className="h-4 w-4" />
@@ -1053,7 +1061,8 @@ function CodeMoment({
                 CODE → DONE
               </h3>
               <p className="mt-3 text-sm leading-relaxed text-ink/70">
-                1. Open <strong className="font-mono text-ink">pigeon.app</strong> on your other device.
+                1. Open <strong className="font-mono text-ink">pigeon.app</strong> on your other
+                device.
                 <br />
                 2. Click <strong>Receive</strong>.
                 <br />
@@ -1274,8 +1283,8 @@ function ReceiveSection({
                     type="text"
                     value={receiveCode}
                     onChange={(e) => onCodeChange(e.target.value.toUpperCase())}
-                    placeholder="K7M4-PQ"
-                    maxLength={10}
+                    placeholder="K7M4P"
+                    maxLength={8}
                     autoFocus
                     className={cn(
                       "h-16 w-full border-2 border-ink bg-paper p-4 font-mono text-3xl font-extrabold uppercase tracking-[0.2em] text-ink outline-none transition-all placeholder:text-ink/30 focus:border-cobalt focus:ring-4 focus:ring-cobalt/20",
@@ -1318,9 +1327,9 @@ function ReceiveSection({
             <div className="mt-10 border-t-2 border-ink/20 pt-6">
               <span className="label text-ink/50">Prototype Note</span>
               <p className="mt-1 text-xs text-ink/50">
-                Code <strong className="font-mono text-ink">K7M4-PQ</strong> is pre-seeded with
-                sample lecture notes so you can test receiving immediately. Or drop a file in the
-                Send tab to generate your own code.
+                Code <strong className="font-mono text-ink">K7M4P</strong> is pre-seeded with sample
+                lecture notes so you can test receiving immediately. Or drop a file in the Send tab
+                to generate your own code.
               </p>
             </div>
           </div>

@@ -28,6 +28,7 @@ OPEN  ➔  DROP  ➔  CODE  ➔  DONE
 1. **Open** `pigeon.app` on your phone.
 2. **Drop** files or paste text.
 3. **Receive** a clean, memorable 6-character pickup code (e.g. `K7M4-PQ`).
+3. **Receive** a clean, memorable 5-character pickup code (e.g. `K7M4P`).
 4. **Enter** the code on the laptop, lab PC, or smartboard to download.
 5. **Auto-Purge**: Ephemeral 10-minute rooms destroy payload data automatically.
 
