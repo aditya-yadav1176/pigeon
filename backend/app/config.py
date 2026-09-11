@@ -28,12 +28,10 @@ class Settings(BaseSettings):
         ]
         if isinstance(v, str):
             try:
-                return json.loads(v)
                 parsed = json.loads(v)
                 if isinstance(parsed, list):
                     return list(set(base_origins + parsed))
             except Exception:
-                return [origin.strip() for origin in v.split(",") if origin.strip()]
                 pass
             custom = [origin.strip() for origin in v.split(",") if origin.strip()]
             return list(set(base_origins + custom))

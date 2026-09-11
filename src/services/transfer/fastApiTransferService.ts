@@ -48,9 +48,6 @@ export class FastAPITransferService implements ITransferService {
   private apiBaseUrl: string;
 
   constructor(apiBaseUrl?: string) {
-    let defaultUrl = "http://localhost:8000";
-    if (typeof window !== "undefined" && window.location?.hostname) {
-      defaultUrl = `http://${window.location.hostname}:8000`;
     const envUrl = (import.meta.env?.["VITE_API_BASE_URL"] as string | undefined)?.trim();
     if (apiBaseUrl) {
       this.apiBaseUrl = apiBaseUrl.replace(/\/+$/, "");
@@ -71,7 +68,7 @@ export class FastAPITransferService implements ITransferService {
       } else {
         console.error(
           "[PIGEON] VITE_API_BASE_URL environment variable is not configured on this public deployment. " +
-            "Please set VITE_API_BASE_URL to your deployed FastAPI backend URL (e.g., https://your-railway-app.up.railway.app).",
+            "Please set VITE_API_BASE_URL to your deployed FastAPI backend URL (e.g., https://your-backend.onrender.com).",
         );
         // Fallback to relative or current origin rather than breaking with mixed-content localhost
         this.apiBaseUrl = "";
@@ -79,12 +76,6 @@ export class FastAPITransferService implements ITransferService {
     } else {
       this.apiBaseUrl = "http://localhost:8000";
     }
-
-    this.apiBaseUrl = (
-      apiBaseUrl ??
-      (import.meta.env?.["VITE_API_BASE_URL"] as string | undefined) ??
-      defaultUrl
-    ).replace(/\/+$/, "");
   }
 
   generateCode(): string {
