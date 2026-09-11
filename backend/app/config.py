@@ -20,11 +20,25 @@ class Settings(BaseSettings):
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
     def parse_cors_origins(cls, v):
+        base_origins = [
+            "http://localhost:3000",
+            "http://127.0.0.1:3000",
+            "http://localhost:5173",
+            "http://127.0.0.1:5173",
+        ]
         if isinstance(v, str):
             try:
                 return json.loads(v)
+                parsed = json.loads(v)
+                if isinstance(parsed, list):
+                    return list(set(base_origins + parsed))
             except Exception:
                 return [origin.strip() for origin in v.split(",") if origin.strip()]
+                pass
+            custom = [origin.strip() for origin in v.split(",") if origin.strip()]
+            return list(set(base_origins + custom))
+        elif isinstance(v, list):
+            return list(set(base_origins + v))
         return v
 
     @property

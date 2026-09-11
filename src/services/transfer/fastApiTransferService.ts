@@ -51,6 +51,33 @@ export class FastAPITransferService implements ITransferService {
     let defaultUrl = "http://localhost:8000";
     if (typeof window !== "undefined" && window.location?.hostname) {
       defaultUrl = `http://${window.location.hostname}:8000`;
+    const envUrl = (import.meta.env?.["VITE_API_BASE_URL"] as string | undefined)?.trim();
+    if (apiBaseUrl) {
+      this.apiBaseUrl = apiBaseUrl.replace(/\/+$/, "");
+    } else if (envUrl) {
+      this.apiBaseUrl = envUrl.replace(/\/+$/, "");
+    } else if (typeof window !== "undefined" && window.location?.hostname) {
+      const hostname = window.location.hostname;
+      // Only fallback to :8000 on local or private LAN networks
+      const isLocalOrLan =
+        hostname === "localhost" ||
+        hostname === "127.0.0.1" ||
+        /^192\.168\.\d+\.\d+$/.test(hostname) ||
+        /^10\.\d+\.\d+\.\d+$/.test(hostname) ||
+        /^172\.(1[6-9]|2[0-9]|3[0-1])\.\d+\.\d+$/.test(hostname);
+
+      if (isLocalOrLan) {
+        this.apiBaseUrl = `http://${hostname}:8000`;
+      } else {
+        console.error(
+          "[PIGEON] VITE_API_BASE_URL environment variable is not configured on this public deployment. " +
+            "Please set VITE_API_BASE_URL to your deployed FastAPI backend URL (e.g., https://your-railway-app.up.railway.app).",
+        );
+        // Fallback to relative or current origin rather than breaking with mixed-content localhost
+        this.apiBaseUrl = "";
+      }
+    } else {
+      this.apiBaseUrl = "http://localhost:8000";
     }
 
     this.apiBaseUrl = (
