@@ -48,7 +48,9 @@ export class FastAPITransferService implements ITransferService {
   private apiBaseUrl: string;
 
   constructor(apiBaseUrl?: string) {
-    const envUrl = (import.meta.env?.["VITE_API_BASE_URL"] as string | undefined)?.trim();
+    const envUrl = (
+      import.meta.env?.["VITE_API_BASE_URL"] as string | undefined
+    )?.trim();
     if (apiBaseUrl) {
       this.apiBaseUrl = apiBaseUrl.replace(/\/+$/, "");
     } else if (envUrl) {
@@ -81,12 +83,17 @@ export class FastAPITransferService implements ITransferService {
   generateCode(): string {
     let code = "";
     for (let i = 0; i < 5; i++) {
-      code += CODE_ALPHABET.charAt(Math.floor(Math.random() * CODE_ALPHABET.length));
+      code += CODE_ALPHABET.charAt(
+        Math.floor(Math.random() * CODE_ALPHABET.length),
+      );
     }
     return code;
   }
 
-  async uploadFiles(files: File[], onProgress?: UploadProgressCallback): Promise<TransferRoom> {
+  async uploadFiles(
+    files: File[],
+    onProgress?: UploadProgressCallback,
+  ): Promise<TransferRoom> {
     const formData = new FormData();
     for (const file of files) {
       formData.append("files", file);
@@ -95,7 +102,10 @@ export class FastAPITransferService implements ITransferService {
     return this.uploadFormData(formData, onProgress);
   }
 
-  async uploadText(text: string, onProgress?: UploadProgressCallback): Promise<TransferRoom> {
+  async uploadText(
+    text: string,
+    onProgress?: UploadProgressCallback,
+  ): Promise<TransferRoom> {
     const formData = new FormData();
     formData.append("text", text);
 
@@ -114,7 +124,10 @@ export class FastAPITransferService implements ITransferService {
         onProgress(0);
         xhr.upload.onprogress = (event) => {
           if (event.lengthComputable) {
-            const pct = Math.min(Math.round((event.loaded / event.total) * 100), 99);
+            const pct = Math.min(
+              Math.round((event.loaded / event.total) * 100),
+              99,
+            );
             onProgress(pct);
           }
         };
@@ -134,7 +147,11 @@ export class FastAPITransferService implements ITransferService {
         } else {
           try {
             const errData = JSON.parse(xhr.responseText);
-            reject(new Error(errData.detail || `Upload failed with status ${xhr.status}`));
+            reject(
+              new Error(
+                errData.detail || `Upload failed with status ${xhr.status}`,
+              ),
+            );
           } catch {
             reject(new Error(`Upload failed with status ${xhr.status}`));
           }
@@ -156,7 +173,9 @@ export class FastAPITransferService implements ITransferService {
   async getRoom(code: string): Promise<TransferRoom | null> {
     const normalized = normalizeCode(code);
     try {
-      const res = await fetch(`${this.apiBaseUrl}/api/rooms/${encodeURIComponent(normalized)}`);
+      const res = await fetch(
+        `${this.apiBaseUrl}/api/rooms/${encodeURIComponent(normalized)}`,
+      );
       if (res.status === 404) {
         return null;
       }
@@ -191,7 +210,9 @@ export class FastAPITransferService implements ITransferService {
       }
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.detail || `Could not connect to room (${res.status})`);
+        throw new Error(
+          errData.detail || `Could not connect to room (${res.status})`,
+        );
       }
 
       const data: ApiRoomResponse = await res.json();
@@ -233,9 +254,12 @@ export class FastAPITransferService implements ITransferService {
   async completeRoom(code: string): Promise<void> {
     const normalized = normalizeCode(code);
     try {
-      await fetch(`${this.apiBaseUrl}/api/rooms/${encodeURIComponent(normalized)}/complete`, {
-        method: "POST",
-      });
+      await fetch(
+        `${this.apiBaseUrl}/api/rooms/${encodeURIComponent(normalized)}/complete`,
+        {
+          method: "POST",
+        },
+      );
     } catch {
       // Best-effort completion notification
     }

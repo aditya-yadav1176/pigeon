@@ -13,7 +13,8 @@ export const Route = createFileRoute("/")({
       { property: "og:title", content: "PIGEON — Get it off your phone" },
       {
         property: "og:description",
-        content: "Drop it. Scan it. Done. A fast temporary handoff between your phone and laptop.",
+        content:
+          "Drop it. Scan it. Done. A fast temporary handoff between your phone and laptop.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

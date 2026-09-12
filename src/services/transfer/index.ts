@@ -6,7 +6,9 @@ import { FastAPITransferService } from "./fastApiTransferService";
 import { MockTransferService } from "./mockTransferService";
 import type { ITransferService } from "./transferService";
 
-const mode = (import.meta.env?.["VITE_TRANSFER_MODE"] as string | undefined)?.toLowerCase();
+const mode = (
+  import.meta.env?.["VITE_TRANSFER_MODE"] as string | undefined
+)?.toLowerCase();
 
 /**
  * Active Transfer Service

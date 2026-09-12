@@ -65,12 +65,17 @@ export class MockTransferService implements ITransferService {
   generateCode(): string {
     let code = "";
     for (let i = 0; i < 5; i++) {
-      code += CODE_ALPHABET.charAt(Math.floor(Math.random() * CODE_ALPHABET.length));
+      code += CODE_ALPHABET.charAt(
+        Math.floor(Math.random() * CODE_ALPHABET.length),
+      );
     }
     return code;
   }
 
-  async uploadFiles(files: File[], onProgress?: UploadProgressCallback): Promise<TransferRoom> {
+  async uploadFiles(
+    files: File[],
+    onProgress?: UploadProgressCallback,
+  ): Promise<TransferRoom> {
     const code = this.generateCode();
     const normalized = normalizeCode(code);
 
@@ -101,14 +106,18 @@ export class MockTransferService implements ITransferService {
     return room;
   }
 
-  async uploadText(text: string, onProgress?: UploadProgressCallback): Promise<TransferRoom> {
+  async uploadText(
+    text: string,
+    onProgress?: UploadProgressCallback,
+  ): Promise<TransferRoom> {
     const code = this.generateCode();
     const normalized = normalizeCode(code);
 
     await this.simulateProgress(onProgress);
 
     const trimmed = text.trim();
-    const isUrl = trimmed.startsWith("http://") || trimmed.startsWith("https://");
+    const isUrl =
+      trimmed.startsWith("http://") || trimmed.startsWith("https://");
     const name = isUrl ? "Shared Link.txt" : "Shared Note.txt";
     const blob = new Blob([trimmed], { type: "text/plain;charset=utf-8" });
     const file = new File([blob], name, { type: "text/plain" });
@@ -158,14 +167,19 @@ export class MockTransferService implements ITransferService {
       url = URL.createObjectURL(payload.file);
       shouldRevoke = true;
     } else if (payload.text) {
-      const blob = new Blob([payload.text], { type: "text/plain;charset=utf-8" });
+      const blob = new Blob([payload.text], {
+        type: "text/plain;charset=utf-8",
+      });
       url = URL.createObjectURL(blob);
       shouldRevoke = true;
     } else {
       // Fallback for demo payloads without local File
-      const blob = new Blob([`PIGEON Demo File: ${payload.name}\nSize: ${payload.size} bytes`], {
-        type: "text/plain",
-      });
+      const blob = new Blob(
+        [`PIGEON Demo File: ${payload.name}\nSize: ${payload.size} bytes`],
+        {
+          type: "text/plain",
+        },
+      );
       url = URL.createObjectURL(blob);
       shouldRevoke = true;
     }

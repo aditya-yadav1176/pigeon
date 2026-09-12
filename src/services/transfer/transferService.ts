@@ -42,12 +42,18 @@ export interface ITransferService {
   /**
    * Upload files to create a temporary room.
    */
-  uploadFiles(files: File[], onProgress?: UploadProgressCallback): Promise<TransferRoom>;
+  uploadFiles(
+    files: File[],
+    onProgress?: UploadProgressCallback,
+  ): Promise<TransferRoom>;
 
   /**
    * Upload pasted text or links as a text payload.
    */
-  uploadText(text: string, onProgress?: UploadProgressCallback): Promise<TransferRoom>;
+  uploadText(
+    text: string,
+    onProgress?: UploadProgressCallback,
+  ): Promise<TransferRoom>;
 
   /**
    * Look up an active room by its code.

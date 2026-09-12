@@ -3,23 +3,43 @@ import secrets
 from pathlib import Path
 from typing import List, Optional
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException, status
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Request, status
 from fastapi.responses import FileResponse
 from app.models import RoomResponse, RoomStatusResponse
 from app.room_manager import room_manager, StoredFile
 from app.storage import save_upload_file, save_text_file
+from app.storage import save_upload_file, save_text_file, get_room_dir
 from app.config import settings
+from app.security import (
+    sanitize_filename,
+    sanitize_header_filename,
+    validate_room_code,
+    validate_file_id,
+    get_client_ip,
+    upload_rate_limiter,
+    code_guess_rate_limiter,
+)
 
 router = APIRouter(prefix="/api/rooms", tags=["Rooms"])
 
 @router.post("", response_model=RoomResponse, status_code=status.HTTP_201_CREATED)
 async def create_room_and_upload(
+    request: Request,
     files: Optional[List[UploadFile]] = File(None),
     text: Optional[str] = Form(None)
 ):
     """
     Creates a temporary room and streams uploaded files / text to disk.
     Enforces maximum total upload size (250MB) and generates secure short code.
+    Includes rate-limiting against automated disk exhaustion.
     """
+    client_ip = get_client_ip(request)
+    if client_ip != "testclient" and upload_rate_limiter.is_rate_limited(client_ip, max_requests=15, window_seconds=60):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many upload requests. Please wait a moment before creating a new Pigeon."
+        )
+
     if not files and not text:
         raise HTTPException(status_code=400, detail="Must provide at least one file or text content.")
 
@@ -30,10 +50,13 @@ async def create_room_and_upload(
         # Handle regular file uploads
         if files:
             for upload_file in files:
-                raw_filename = upload_file.filename or ""
-                safe_filename = os.path.basename(raw_filename).strip()
-                if not safe_filename:
+                raw_filename = (upload_file.filename or "").strip()
+                if not raw_filename or not any(c.isalnum() for c in raw_filename):
                     continue
+                safe_filename = sanitize_filename(raw_filename)
+                if not safe_filename or safe_filename == "unnamed_file":
+                    continue
+
                 file_id = secrets.token_hex(8)
                 file_path, file_size = await save_upload_file(upload_file, room.code, file_id)
                 total_size += file_size
@@ -42,13 +65,15 @@ async def create_room_and_upload(
                         status_code=413,
                         detail=f"Total upload size exceeds limit of {settings.MAX_FILE_SIZE_MB} MB."
                     )
-                
-                content_type = upload_file.content_type or "application/octet-stream"
+
+                raw_content_type = upload_file.content_type or "application/octet-stream"
+                clean_content_type = "".join(c for c in raw_content_type if c.isprintable() and c not in '\r\n\t')
+
                 room.files.append(StoredFile(
                     file_id=file_id,
                     name=safe_filename,
                     size=file_size,
-                    content_type=content_type,
+                    content_type=clean_content_type,
                     file_path=str(file_path)
                 ))
 
@@ -79,10 +104,17 @@ async def create_room_and_upload(
     return room.to_response()
 
 @router.get("/{code}", response_model=RoomResponse)
-def get_room_details(code: str):
+def get_room_details(code: str, request: Request):
     """Retrieves room status and file metadata."""
-    room = room_manager.get_room(code)
+    safe_code = validate_room_code(code)
+    room = room_manager.get_room(safe_code)
     if not room:
+        client_ip = get_client_ip(request)
+        if client_ip != "testclient" and code_guess_rate_limiter.is_rate_limited(client_ip, max_requests=25, window_seconds=60):
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Too many invalid code attempts. Please wait a minute and try again."
+            )
         raise HTTPException(
             status_code=404,
             detail=f"Room with code '{code}' was not found or has expired."
@@ -90,10 +122,17 @@ def get_room_details(code: str):
     return room.to_response()
 
 @router.post("/{code}/connect", response_model=RoomResponse)
-def connect_receiver(code: str):
+def connect_receiver(code: str, request: Request):
     """Marks receiver as connected and returns room metadata."""
-    room = room_manager.connect_receiver(code)
+    safe_code = validate_room_code(code)
+    room = room_manager.connect_receiver(safe_code)
     if not room:
+        client_ip = get_client_ip(request)
+        if client_ip != "testclient" and code_guess_rate_limiter.is_rate_limited(client_ip, max_requests=25, window_seconds=60):
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Too many invalid code attempts. Please wait a minute and try again."
+            )
         raise HTTPException(
             status_code=404,
             detail=f"Room with code '{code}' was not found or has expired."
@@ -103,7 +142,8 @@ def connect_receiver(code: str):
 @router.post("/{code}/complete", response_model=RoomResponse)
 def complete_transfer(code: str):
     """Marks room transfer as completed."""
-    room = room_manager.complete_room(code)
+    safe_code = validate_room_code(code)
+    room = room_manager.complete_room(safe_code)
     if not room:
         raise HTTPException(
             status_code=404,
@@ -114,7 +154,8 @@ def complete_transfer(code: str):
 @router.get("/{code}/status", response_model=RoomStatusResponse)
 def poll_room_status(code: str):
     """Lightweight polling endpoint to detect receiver connection and expiration."""
-    room = room_manager.get_room(code)
+    safe_code = validate_room_code(code)
+    room = room_manager.get_room(safe_code)
     if not room:
         raise HTTPException(
             status_code=404,
@@ -130,28 +171,35 @@ def poll_room_status(code: str):
 @router.get("/{code}/files/{file_id}")
 def download_file(code: str, file_id: str):
     """Streams the stored file from disk as a real attachment download."""
-    room = room_manager.get_room(code)
+    safe_code = validate_room_code(code)
+    safe_file_id = validate_file_id(file_id)
+
+    room = room_manager.get_room(safe_code)
     if not room:
         raise HTTPException(
             status_code=404,
             detail=f"Room with code '{code}' was not found or has expired."
         )
 
-    target_file = next((f for f in room.files if f.id == file_id), None)
+    target_file = next((f for f in room.files if f.id == safe_file_id), None)
     if not target_file:
         raise HTTPException(status_code=404, detail="Requested file was not found.")
 
     file_path = Path(target_file.file_path)
-    if not file_path.exists():
+    room_dir = get_room_dir(room.code).resolve()
+    resolved_path = file_path.resolve()
+    if not resolved_path.is_relative_to(room_dir):
+        raise HTTPException(status_code=404, detail="Requested file was not found.")
+
+    if not resolved_path.exists():
         raise HTTPException(status_code=404, detail="File content missing from storage.")
 
-    # Sanitize filename for header
-    sanitized_name = target_file.name.replace('"', '\"')
+    sanitized_header = sanitize_header_filename(target_file.name)
     return FileResponse(
-        path=file_path,
+        path=resolved_path,
         media_type=target_file.content_type,
-        filename=target_file.name,
+        filename=sanitized_header,
         headers={
-            "Content-Disposition": f'attachment; filename="{sanitized_name}"'
+            "Content-Disposition": f'attachment; filename="{sanitized_header}"'
         }
     )

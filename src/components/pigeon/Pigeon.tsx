@@ -46,7 +46,8 @@ export function Pigeon({
       state === "sending");
 
   const showCheckmark =
-    parts?.checkmark?.visible ?? (effectiveMood === "done" || state === "success");
+    parts?.checkmark?.visible ??
+    (effectiveMood === "done" || state === "success");
 
   // Accessible attributes
   const accessibleAttributes = decorative
@@ -103,7 +104,10 @@ export function Pigeon({
           parts?.neck?.visible !== false && (
             <path
               d="M 88 17 C 96 17 103.5 21.5 105.5 28.5 C 103.5 32 101 37.5 97 41.5 C 94 48 91 58 82 66 C 72 74 58 75.5 45 71.5 C 37 67.5 33 59.5 35 53.5 C 43 45.5 55 39.5 67 33.5 C 75 25.5 81 19 88 17 Z"
-              className={cn(bodyClass, parts?.body?.className ?? parts?.head?.className)}
+              className={cn(
+                bodyClass,
+                parts?.body?.className ?? parts?.head?.className,
+              )}
               fill={parts?.body?.fill ?? parts?.head?.fill ?? "#246AFF"}
               stroke={parts?.body?.stroke ?? parts?.head?.stroke}
               strokeWidth={parts?.body?.strokeWidth ?? parts?.head?.strokeWidth}
@@ -174,7 +178,13 @@ export function Pigeon({
 
         {/* 7. Parcel (carrying / transfer states) */}
         {showParcel && (
-          <g className={cn("pigeon-parcel", motion.parcelClass, parts?.parcel?.className)}>
+          <g
+            className={cn(
+              "pigeon-parcel",
+              motion.parcelClass,
+              parts?.parcel?.className,
+            )}
+          >
             <rect
               x="46"
               y="92"
@@ -186,7 +196,12 @@ export function Pigeon({
               stroke={parts?.parcel?.stroke}
               strokeWidth={parts?.parcel?.strokeWidth}
             />
-            <path d="M46 100 h30 M61 92 v24" className="stroke-paper" strokeWidth="3" fill="none" />
+            <path
+              d="M46 100 h30 M61 92 v24"
+              className="stroke-paper"
+              strokeWidth="3"
+              fill="none"
+            />
           </g>
         )}
 
@@ -194,7 +209,11 @@ export function Pigeon({
         {showCheckmark && (
           <path
             d="M104 66 l8 9 l16 -20"
-            className={cn(checkmarkClass, motion.checkmarkClass, parts?.checkmark?.className)}
+            className={cn(
+              checkmarkClass,
+              motion.checkmarkClass,
+              parts?.checkmark?.className,
+            )}
             strokeWidth={parts?.checkmark?.strokeWidth ?? 8}
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -219,7 +238,12 @@ export function PigeonMark({
 }: PigeonMarkProps) {
   return (
     <span className={cn("block w-9 shrink-0", className)}>
-      <Pigeon mood={mood} state={state} animated={animated} decorative={decorative} />
+      <Pigeon
+        mood={mood}
+        state={state}
+        animated={animated}
+        decorative={decorative}
+      />
     </span>
   );
 }

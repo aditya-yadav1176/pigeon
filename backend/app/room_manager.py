@@ -3,10 +3,8 @@ import secrets
 from typing import Dict, List, Optional
 from app.models import FileMetadata, RoomResponse
 from app.config import settings
-from app.storage import delete_room_storage
+from app.storage import delete_room_storage, cleanup_orphaned_storage
 
-# Unambiguous alphabet avoiding O/0, I/1, S/5
-CODE_ALPHABET = "ABCDEFGHJKLMNPQRTUVWXYZ2346789"
 # Unambiguous alphabet avoiding 0, 1, I, O
 CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 
@@ -54,7 +52,6 @@ class Room:
 
 class RoomManager:
     def __init__(self):
-        # Maps normalized uppercase code (e.g. "K7M4PQ") to Room
         # Maps normalized uppercase code (e.g. "K7M4P") to Room
         self.rooms: Dict[str, Room] = {}
 
@@ -64,15 +61,11 @@ class RoomManager:
 
     def generate_code(self) -> str:
         for _ in range(100):
-            part1 = "".join(secrets.choice(CODE_ALPHABET) for _ in range(4))
-            part2 = "".join(secrets.choice(CODE_ALPHABET) for _ in range(2))
-            code = f"{part1}-{part2}"
             code = "".join(secrets.choice(CODE_ALPHABET) for _ in range(5))
             normalized = self.normalize_code(code)
             if normalized not in self.rooms:
                 return code
         # Fallback if busy
-        return f"{secrets.token_hex(2).upper()}-{secrets.token_hex(1).upper()}"
         return "".join(secrets.choice(CODE_ALPHABET) for _ in range(5))
 
     def create_room(self) -> Room:
@@ -119,6 +112,11 @@ class RoomManager:
         expired_keys = [k for k, r in self.rooms.items() if now >= r.expires_at]
         for k in expired_keys:
             self.expire_room(k)
+        
+        # Purge any orphaned storage directories left over from aborted uploads or server restarts
+        active_codes = set(self.rooms.keys())
+        cleanup_orphaned_storage(active_codes, settings.ROOM_TTL_SECONDS)
+
         return len(expired_keys)
 
 room_manager = RoomManager()

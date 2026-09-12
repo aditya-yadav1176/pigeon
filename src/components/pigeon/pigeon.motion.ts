@@ -64,7 +64,10 @@ export function getPigeonMotionClasses(
   if (!animated) {
     return {
       stageClass: state === "expired" ? "opacity-65" : undefined,
-      legsClass: state === "sending" || mood === "flying" ? "pigeon-legs-flying" : undefined,
+      legsClass:
+        state === "sending" || mood === "flying"
+          ? "pigeon-legs-flying"
+          : undefined,
     };
   }
 

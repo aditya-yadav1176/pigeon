@@ -32,9 +32,18 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { transferService, type TransferPayload, type TransferRoom } from "@/services/transfer";
+import {
+  transferService,
+  type TransferPayload,
+  type TransferRoom,
+} from "@/services/transfer";
 import { Pigeon, PigeonMark } from "./Pigeon";
 import type { PigeonState } from "./pigeon.types";
 
@@ -109,7 +118,11 @@ function formatSize(size: number) {
 function FileGlyph({ type }: { type: string }) {
   if (type.startsWith("image")) return <FileImage />;
   if (type === "text/plain") return <MessageSquareText />;
-  return type.includes("pdf") || type.includes("presentation") ? <FileText /> : <File />;
+  return type.includes("pdf") || type.includes("presentation") ? (
+    <FileText />
+  ) : (
+    <File />
+  );
 }
 
 function IconButton({
@@ -166,7 +179,10 @@ export function PigeonExperience() {
   const [codeError, setCodeError] = useState<string | null>(null);
 
   // Upload error state
-  const [uploadError, setUploadError] = useState<{ title: string; detail: string } | null>(null);
+  const [uploadError, setUploadError] = useState<{
+    title: string;
+    detail: string;
+  } | null>(null);
 
   // Progress, countdown, dialogs
   const [progress, setProgress] = useState(0);
@@ -187,7 +203,10 @@ export function PigeonExperience() {
   // Room countdown timer
   useEffect(() => {
     if (!["READY", "WAITING_FOR_RECEIVER"].includes(appState)) return;
-    const timer = window.setInterval(() => setSeconds((value) => Math.max(0, value - 1)), 1000);
+    const timer = window.setInterval(
+      () => setSeconds((value) => Math.max(0, value - 1)),
+      1000,
+    );
     return () => window.clearInterval(timer);
   }, [appState]);
 
@@ -234,7 +253,11 @@ export function PigeonExperience() {
     setCodeError(null);
     if (newMode === "receive") {
       // If we already completed a transfer or have files available, keep it; otherwise open code entry
-      if (!["SUCCESS", "FILES_AVAILABLE", "DOWNLOADING", "COMPLETED"].includes(appState)) {
+      if (
+        !["SUCCESS", "FILES_AVAILABLE", "DOWNLOADING", "COMPLETED"].includes(
+          appState,
+        )
+      ) {
         setAppState("RECEIVER_CODE_ENTRY");
       }
       if (activeRoom) {
@@ -243,10 +266,14 @@ export function PigeonExperience() {
     } else {
       if (
         activeRoom &&
-        ["READY", "WAITING_FOR_RECEIVER", "CONNECTED", "COMPLETED"].includes(appState)
+        ["READY", "WAITING_FOR_RECEIVER", "CONNECTED", "COMPLETED"].includes(
+          appState,
+        )
       ) {
         // preserve active room state
-      } else if (!["SUCCESS", "FILE_SELECTED", "COMPLETED"].includes(appState)) {
+      } else if (
+        !["SUCCESS", "FILE_SELECTED", "COMPLETED"].includes(appState)
+      ) {
         setAppState("IDLE");
       }
     }
@@ -260,20 +287,24 @@ export function PigeonExperience() {
     if (rawIncoming.length > 0 && validIncoming.length === 0) {
       setUploadError({
         title: "Empty file detected.",
-        detail: "Pigeon cannot carry empty 0-byte files. Please choose a valid file.",
+        detail:
+          "Pigeon cannot carry empty 0-byte files. Please choose a valid file.",
       });
       setAppState("ERROR");
       return;
     }
 
     const combinedFiles =
-      appState === "FILE_SELECTED" ? [...selectedFiles, ...validIncoming] : validIncoming;
+      appState === "FILE_SELECTED"
+        ? [...selectedFiles, ...validIncoming]
+        : validIncoming;
     const totalSize = combinedFiles.reduce((acc, file) => acc + file.size, 0);
 
     if (totalSize > 250 * 1024 * 1024) {
       setUploadError({
         title: "That one’s too heavy.",
-        detail: "Pigeon carries up to 250 MB total per transfer. Please choose smaller files.",
+        detail:
+          "Pigeon carries up to 250 MB total per transfer. Please choose smaller files.",
       });
       setAppState("ERROR");
       return;
@@ -306,14 +337,22 @@ export function PigeonExperience() {
     setUploadError(null);
 
     try {
-      const room = await transferService.uploadText(trimmed, (pct) => setProgress(pct));
+      const room = await transferService.uploadText(trimmed, (pct) =>
+        setProgress(pct),
+      );
       setActiveRoom(room);
       setActivePayloads(room.payloads);
       setAppState("WAITING_FOR_RECEIVER");
-      const remainingSeconds = Math.max(1, Math.floor((room.expiresAt - Date.now()) / 1000));
+      const remainingSeconds = Math.max(
+        1,
+        Math.floor((room.expiresAt - Date.now()) / 1000),
+      );
       setSeconds(remainingSeconds);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Something went wrong while uploading.";
+      const message =
+        err instanceof Error
+          ? err.message
+          : "Something went wrong while uploading.";
       setUploadError({
         title: "Could not upload note.",
         detail: message,
@@ -330,16 +369,26 @@ export function PigeonExperience() {
     setUploadError(null);
 
     try {
-      const room = await transferService.uploadFiles(selectedFiles, (pct) => setProgress(pct));
+      const room = await transferService.uploadFiles(selectedFiles, (pct) =>
+        setProgress(pct),
+      );
       setActiveRoom(room);
       setActivePayloads(room.payloads);
       setAppState("WAITING_FOR_RECEIVER");
-      const remainingSeconds = Math.max(1, Math.floor((room.expiresAt - Date.now()) / 1000));
+      const remainingSeconds = Math.max(
+        1,
+        Math.floor((room.expiresAt - Date.now()) / 1000),
+      );
       setSeconds(remainingSeconds);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Something went wrong while uploading.";
+      const message =
+        err instanceof Error
+          ? err.message
+          : "Something went wrong while uploading.";
       setUploadError({
-        title: message.includes("250") ? "That one’s too heavy." : "Upload failed.",
+        title: message.includes("250")
+          ? "That one’s too heavy."
+          : "Upload failed.",
         detail: message,
       });
       setAppState("ERROR");
@@ -476,7 +525,9 @@ export function PigeonExperience() {
                   onClick={() => switchMode("send")}
                   className={cn(
                     "px-3.5 py-1.5 font-display text-xs font-extrabold uppercase tracking-[0.14em] transition-colors sm:text-sm",
-                    mode === "send" ? "bg-ink text-paper" : "text-ink hover:bg-ink/10",
+                    mode === "send"
+                      ? "bg-ink text-paper"
+                      : "text-ink hover:bg-ink/10",
                   )}
                 >
                   Send a file
@@ -486,7 +537,9 @@ export function PigeonExperience() {
                   onClick={() => switchMode("receive")}
                   className={cn(
                     "px-3.5 py-1.5 font-display text-xs font-extrabold uppercase tracking-[0.14em] transition-colors sm:text-sm",
-                    mode === "receive" ? "bg-cobalt text-paper" : "text-ink hover:bg-ink/10",
+                    mode === "receive"
+                      ? "bg-cobalt text-paper"
+                      : "text-ink hover:bg-ink/10",
                   )}
                 >
                   Receive
@@ -506,7 +559,8 @@ export function PigeonExperience() {
                 }}
                 className="h-10 rounded-none border-2 border-ink bg-acid px-3 text-ink shadow-none hover:bg-ink hover:text-paper sm:px-4"
               >
-                <Plus className="h-4 w-4" /> <span className="hidden sm:inline">Drop a file</span>
+                <Plus className="h-4 w-4" />{" "}
+                <span className="hidden sm:inline">Drop a file</span>
                 <span className="sm:hidden">Drop</span>
               </Button>
             </div>
@@ -523,19 +577,22 @@ export function PigeonExperience() {
             <div className="relative grid gap-8 lg:grid-cols-12 lg:items-end">
               <div className="relative z-10 lg:col-span-7">
                 <div className="mb-4 inline-flex items-center gap-2 border-2 border-ink bg-paper px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.18em]">
-                  <span className="h-2 w-2 rounded-full bg-acid" /> Phone <span>→</span> Pigeon{" "}
-                  <span>→</span> Laptop / Board
+                  <span className="h-2 w-2 rounded-full bg-acid" /> Phone{" "}
+                  <span>→</span> Pigeon <span>→</span> Laptop / Board
                 </div>
                 <h1 className="font-display text-[3.2rem] font-extrabold leading-[0.86] tracking-[-0.03em] sm:text-8xl lg:text-[8rem]">
                   <span className="block">Get it</span>
                   <span className="relative z-10 block">
-                    <span className="relative inline-block -rotate-1 bg-acid px-2">off</span> your
+                    <span className="relative inline-block -rotate-1 bg-acid px-2">
+                      off
+                    </span>{" "}
+                    your
                   </span>
                   <span className="block">phone.</span>
                 </h1>
                 <p className="mt-5 max-w-[42ch] text-pretty text-base leading-relaxed text-ink/65 sm:text-lg">
-                  Drop it. Get a short code. Pick it up on your laptop or board. No email, no
-                  WhatsApp, no account.
+                  Drop it. Get a short code. Pick it up on your laptop or board.
+                  No email, no WhatsApp, no account.
                 </p>
               </div>
 
@@ -577,8 +634,9 @@ export function PigeonExperience() {
               {Array.from({ length: 8 }).map((_, index) => (
                 <span key={index} className="flex items-center gap-8">
                   Open <span className="text-acid">·</span> Drop{" "}
-                  <span className="text-acid">·</span> Code <span className="text-acid">·</span>{" "}
-                  Done <span className="text-acid">✦</span>
+                  <span className="text-acid">·</span> Code{" "}
+                  <span className="text-acid">·</span> Done{" "}
+                  <span className="text-acid">✦</span>
                 </span>
               ))}
             </div>
@@ -608,9 +666,13 @@ export function PigeonExperience() {
                   setCodeError(null);
                 }}
               />
-            ) : ["READY", "WAITING_FOR_RECEIVER", "CONNECTED", "COMPLETED", "EXPIRED"].includes(
-                appState,
-              ) && activeRoom ? (
+            ) : [
+                "READY",
+                "WAITING_FOR_RECEIVER",
+                "CONNECTED",
+                "COMPLETED",
+                "EXPIRED",
+              ].includes(appState) && activeRoom ? (
               <CodeMoment
                 appState={appState}
                 room={activeRoom}
@@ -630,7 +692,11 @@ export function PigeonExperience() {
                 <section className="relative col-span-12 flex min-h-[460px] flex-col border-2 border-ink bg-surface p-4 shadow-poster sm:p-6 lg:col-span-8">
                   {/* Pigeon mascot peering over top edge */}
                   <span className="pointer-events-none absolute -top-14 right-6 hidden w-32 rotate-6 text-ink sm:block">
-                    <Pigeon state={pigeonState} wingClass="fill-acid" beakClass="fill-coral" />
+                    <Pigeon
+                      state={pigeonState}
+                      wingClass="fill-acid"
+                      beakClass="fill-coral"
+                    />
                   </span>
 
                   <div className="mb-4 flex items-center justify-between">
@@ -669,9 +735,13 @@ export function PigeonExperience() {
                       <FileList
                         files={activePayloads}
                         onRemove={(id) => {
-                          const next = activePayloads.filter((file) => file.id !== id);
+                          const next = activePayloads.filter(
+                            (file) => file.id !== id,
+                          );
                           setActivePayloads(next);
-                          setSelectedFiles(next.map((p) => p.file).filter(Boolean) as File[]);
+                          setSelectedFiles(
+                            next.map((p) => p.file).filter(Boolean) as File[],
+                          );
                           if (!next.length) setAppState("IDLE");
                         }}
                       />
@@ -682,7 +752,9 @@ export function PigeonExperience() {
                             <span className="font-display text-2xl font-extrabold">
                               Pigeon in flight
                             </span>
-                            <span className="font-mono text-sm text-acid">{progress}%</span>
+                            <span className="font-mono text-sm text-acid">
+                              {progress}%
+                            </span>
                           </div>
                           <Progress
                             value={progress}
@@ -732,7 +804,9 @@ export function PigeonExperience() {
                     <div
                       className={cn(
                         "group relative grid flex-1 place-items-center overflow-hidden border-2 border-dashed p-7 text-center transition-colors",
-                        dragging ? "border-ink bg-acid" : "border-ink/35 bg-paper",
+                        dragging
+                          ? "border-ink bg-acid"
+                          : "border-ink/35 bg-paper",
                       )}
                       onDragEnter={(event) => {
                         event.preventDefault();
@@ -750,10 +824,15 @@ export function PigeonExperience() {
                         <span
                           className={cn(
                             "mx-auto block w-40 text-cobalt transition-transform duration-300",
-                            dragging ? "-translate-y-2 scale-110" : "group-hover:-translate-y-1",
+                            dragging
+                              ? "-translate-y-2 scale-110"
+                              : "group-hover:-translate-y-1",
                           )}
                         >
-                          <Pigeon state={dragging ? "dragging" : "idle"} parcelClass="fill-coral" />
+                          <Pigeon
+                            state={dragging ? "dragging" : "idle"}
+                            parcelClass="fill-coral"
+                          />
                         </span>
                         <h2 className="mt-6 font-display text-4xl font-extrabold leading-none">
                           {dragging ? "Give it here." : "Drop it on the bird."}
@@ -790,13 +869,19 @@ export function PigeonExperience() {
                     className="sr-only"
                     type="file"
                     multiple
-                    onChange={(event) => event.target.files && handleFiles(event.target.files)}
+                    onChange={(event) =>
+                      event.target.files && handleFiles(event.target.files)
+                    }
                   />
                 </section>
 
                 <div className="col-span-12 grid gap-4 lg:col-span-4">
                   <TransferVisual appState={appState} />
-                  <PayloadPanel files={activePayloads} totalSize={totalSize} appState={appState} />
+                  <PayloadPanel
+                    files={activePayloads}
+                    totalSize={totalSize}
+                    appState={appState}
+                  />
                 </div>
               </div>
             )}
@@ -813,7 +898,9 @@ export function PigeonExperience() {
               </span>{" "}
               PIGEON
             </div>
-            <p className="text-sm text-ink/50">Built for the “it’s on my phone” problem.</p>
+            <p className="text-sm text-ink/50">
+              Built for the “it’s on my phone” problem.
+            </p>
           </div>
         </footer>
 
@@ -825,7 +912,8 @@ export function PigeonExperience() {
                 Send the words.
               </DialogTitle>
               <DialogDescription className="text-ink/55">
-                Paste a note, link, code, or anything you don’t want to type twice.
+                Paste a note, link, code, or anything you don’t want to type
+                twice.
               </DialogDescription>
             </DialogHeader>
             <textarea
@@ -836,7 +924,9 @@ export function PigeonExperience() {
               className="mt-3 min-h-44 w-full resize-none border-2 border-ink bg-surface p-4 text-base outline-none focus:ring-2 focus:ring-cobalt/30"
             />
             <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
-              <p className="self-center text-xs text-ink/45">Stays in memory for this session.</p>
+              <p className="self-center text-xs text-ink/45">
+                Stays in memory for this session.
+              </p>
               <Button
                 disabled={!textValue.trim()}
                 onClick={handleSendText}
@@ -865,7 +955,9 @@ function FileList({
   return (
     <div className="space-y-2">
       <div className="mb-4">
-        <h2 className="font-display text-4xl font-extrabold leading-none">Ready to fly.</h2>
+        <h2 className="font-display text-4xl font-extrabold leading-none">
+          Ready to fly.
+        </h2>
         <p className="mt-2 text-sm font-semibold text-ink/55">
           {files.length} {files.length === 1 ? "file" : "files"} selected
         </p>
@@ -881,9 +973,16 @@ function FileList({
           <div className="min-w-0">
             <p className="truncate text-sm font-bold">{file.name}</p>
             <p className="text-xs text-ink/45">{formatSize(file.size)}</p>
-            {file.text && <p className="mt-2 line-clamp-2 text-sm text-ink/65">{file.text}</p>}
+            {file.text && (
+              <p className="mt-2 line-clamp-2 text-sm text-ink/65">
+                {file.text}
+              </p>
+            )}
           </div>
-          <IconButton label={`Remove ${file.name}`} onClick={() => onRemove(file.id)}>
+          <IconButton
+            label={`Remove ${file.name}`}
+            onClick={() => onRemove(file.id)}
+          >
             <Trash2 className="h-4 w-4" />
           </IconButton>
         </div>
@@ -921,7 +1020,11 @@ function CodeMoment({
       <section className="grid place-items-center border-2 border-ink bg-ink px-6 py-24 text-center text-paper">
         <div>
           <span className="mx-auto block w-40 rotate-6 text-paper">
-            <Pigeon state="expired" wingClass="fill-coral" beakClass="fill-acid" />
+            <Pigeon
+              state="expired"
+              wingClass="fill-coral"
+              beakClass="fill-acid"
+            />
           </span>
           <Clock3 className="mx-auto mt-6 h-10 w-10 text-coral" />
           <h2 className="mt-4 font-display text-5xl font-extrabold leading-none">
@@ -981,7 +1084,11 @@ function CodeMoment({
                       variant="outline"
                       className="h-11 rounded-none border-2 border-paper bg-paper text-ink hover:bg-acid hover:text-ink"
                     >
-                      {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}{" "}
+                      {copied ? (
+                        <Check className="h-4 w-4" />
+                      ) : (
+                        <Copy className="h-4 w-4" />
+                      )}{" "}
                       {copied ? "Copied" : "Copy"}
                     </Button>
                     <Button
@@ -999,7 +1106,9 @@ function CodeMoment({
               {appState === "CONNECTED" ? (
                 <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 bg-cobalt p-3 text-paper">
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-extrabold">Receiver connected!</p>
+                    <p className="truncate text-sm font-extrabold">
+                      Receiver connected!
+                    </p>
                     <p className="text-xs font-semibold text-paper/80">
                       Carrying your files across...
                     </p>
@@ -1011,7 +1120,9 @@ function CodeMoment({
               ) : appState === "COMPLETED" ? (
                 <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 bg-acid p-3 text-ink">
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-extrabold">Transfer Complete!</p>
+                    <p className="truncate text-sm font-extrabold">
+                      Transfer Complete!
+                    </p>
                     <p className="text-xs font-semibold text-ink/70">
                       Pigeon has delivered your files.
                     </p>
@@ -1023,7 +1134,9 @@ function CodeMoment({
               ) : (
                 <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 bg-acid p-3 text-ink">
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-extrabold">Waiting for receiver...</p>
+                    <p className="truncate text-sm font-extrabold">
+                      Waiting for receiver...
+                    </p>
                     <p className="text-xs font-semibold text-ink/60">
                       Expires in {minutes}:{seconds}
                     </p>
@@ -1041,7 +1154,8 @@ function CodeMoment({
                 onClick={onSwitchToReceive}
                 className="h-12 rounded-none border-2 border-acid bg-acid px-5 text-ink hover:bg-paper"
               >
-                <KeyRound className="mr-2 h-4 w-4" /> Test Receive Mode with this Code
+                <KeyRound className="mr-2 h-4 w-4" /> Test Receive Mode with
+                this Code
               </Button>
               <Button
                 onClick={onReset}
@@ -1061,12 +1175,14 @@ function CodeMoment({
                 CODE → DONE
               </h3>
               <p className="mt-3 text-sm leading-relaxed text-ink/70">
-                1. Open <strong className="font-mono text-ink">pigeon.app</strong> on your other
-                device.
+                1. Open{" "}
+                <strong className="font-mono text-ink">pigeon.app</strong> on
+                your other device.
                 <br />
                 2. Click <strong>Receive</strong>.
                 <br />
-                3. Type <strong className="font-mono text-cobalt">{room.code}</strong>.
+                3. Type{" "}
+                <strong className="font-mono text-cobalt">{room.code}</strong>.
               </p>
 
               <div className="mt-6 border-t-2 border-ink pt-4">
@@ -1116,7 +1232,9 @@ function ReceiveSection({
   downloadedIds: string[];
   onReset: () => void;
 }) {
-  const isTransferring = ["CONNECTING", "SENDING", "RECEIVING"].includes(appState);
+  const isTransferring = ["CONNECTING", "SENDING", "RECEIVING"].includes(
+    appState,
+  );
   const isSuccess =
     (appState === "SUCCESS" ||
       appState === "FILES_AVAILABLE" ||
@@ -1131,7 +1249,11 @@ function ReceiveSection({
         <section className="relative border-2 border-ink bg-surface p-6 shadow-poster sm:p-10">
           <div className="mx-auto max-w-3xl text-center">
             <span className="mx-auto block w-32 text-cobalt">
-              <Pigeon state="success" wingClass="fill-acid" beakClass="fill-coral" />
+              <Pigeon
+                state="success"
+                wingClass="fill-acid"
+                beakClass="fill-coral"
+              />
             </span>
 
             <span className="label mt-4 block text-acid">
@@ -1167,7 +1289,9 @@ function ReceiveSection({
                     <FileGlyph type={payload.type} />
                   </span>
                   <div className="min-w-0">
-                    <p className="truncate text-base font-bold text-ink">{payload.name}</p>
+                    <p className="truncate text-base font-bold text-ink">
+                      {payload.name}
+                    </p>
                     <p className="text-xs font-semibold text-ink/50">
                       {formatSize(payload.size)} · {payload.type}
                     </p>
@@ -1202,7 +1326,8 @@ function ReceiveSection({
                   onClick={() => onDownloadAll(room.payloads)}
                   className="h-12 rounded-none border-2 border-ink bg-ink px-6 text-paper hover:bg-cobalt"
                 >
-                  <Download className="mr-2 h-4 w-4" /> Download All ({room.payloads.length} files)
+                  <Download className="mr-2 h-4 w-4" /> Download All (
+                  {room.payloads.length} files)
                 </Button>
               )}
               <Button
@@ -1252,7 +1377,8 @@ function ReceiveSection({
             </div>
 
             <p className="font-mono text-sm text-paper/70">
-              Code: <strong className="text-acid">{room?.code ?? receiveCode}</strong>
+              Code:{" "}
+              <strong className="text-acid">{room?.code ?? receiveCode}</strong>
             </p>
           </div>
         </section>
@@ -1274,7 +1400,10 @@ function ReceiveSection({
 
             <form onSubmit={onSubmit} className="mt-8 space-y-5">
               <div>
-                <label htmlFor="pigeon-code-input" className="label mb-2 block text-ink">
+                <label
+                  htmlFor="pigeon-code-input"
+                  className="label mb-2 block text-ink"
+                >
                   Pigeon Code
                 </label>
                 <div className="relative">
@@ -1293,7 +1422,11 @@ function ReceiveSection({
                   />
                   <KeyRound className="pointer-events-none absolute right-4 top-1/2 h-6 w-6 -translate-y-1/2 text-ink/30" />
                 </div>
-                {codeError && <p className="mt-2 text-sm font-bold text-coral">{codeError}</p>}
+                {codeError && (
+                  <p className="mt-2 text-sm font-bold text-coral">
+                    {codeError}
+                  </p>
+                )}
               </div>
 
               {/* Memory room autofill helper chip for demonstration */}
@@ -1301,7 +1434,9 @@ function ReceiveSection({
                 <div className="flex items-center justify-between border-2 border-dashed border-ink/30 bg-paper p-3 text-sm">
                   <span className="font-semibold text-ink/70">
                     Active code from your Send tab:{" "}
-                    <strong className="font-mono text-cobalt">{activeRoomCode}</strong>
+                    <strong className="font-mono text-cobalt">
+                      {activeRoomCode}
+                    </strong>
                   </span>
                   <Button
                     type="button"
@@ -1327,9 +1462,10 @@ function ReceiveSection({
             <div className="mt-10 border-t-2 border-ink/20 pt-6">
               <span className="label text-ink/50">Prototype Note</span>
               <p className="mt-1 text-xs text-ink/50">
-                Code <strong className="font-mono text-ink">K7M4P</strong> is pre-seeded with sample
-                lecture notes so you can test receiving immediately. Or drop a file in the Send tab
-                to generate your own code.
+                Code <strong className="font-mono text-ink">K7M4P</strong> is
+                pre-seeded with sample lecture notes so you can test receiving
+                immediately. Or drop a file in the Send tab to generate your own
+                code.
               </p>
             </div>
           </div>
@@ -1421,12 +1557,19 @@ function PayloadPanel({
       </div>
       <div className="mt-5 space-y-3">
         {files.length === 0 ? (
-          <p className="text-sm font-semibold text-ink/60">No files staged yet.</p>
+          <p className="text-sm font-semibold text-ink/60">
+            No files staged yet.
+          </p>
         ) : (
           files.slice(0, 3).map((file) => (
-            <div key={file.id} className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 text-sm">
+            <div
+              key={file.id}
+              className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 text-sm"
+            >
               <span className="truncate font-bold">{file.name}</span>
-              <span className="shrink-0 text-ink/60">{formatSize(file.size)}</span>
+              <span className="shrink-0 text-ink/60">
+                {formatSize(file.size)}
+              </span>
             </div>
           ))
         )}
@@ -1442,17 +1585,33 @@ function PayloadPanel({
 /**
  * Marketing & Campaign posters below the fold
  */
-function CampaignSections({ onSwitchToReceive }: { onSwitchToReceive: () => void }) {
-  const oldWay = ["Open Gmail", "Login", "Compose", "Attach", "Send", "Open laptop", "Download"];
+function CampaignSections({
+  onSwitchToReceive,
+}: {
+  onSwitchToReceive: () => void;
+}) {
+  const oldWay = [
+    "Open Gmail",
+    "Login",
+    "Compose",
+    "Attach",
+    "Send",
+    "Open laptop",
+    "Download",
+  ];
   return (
     <div>
       {/* POSTER 1 — The stupid old way */}
       <section className="border-t-2 border-ink">
         <div className="mx-auto grid max-w-[1440px] gap-10 px-4 py-20 sm:px-7 lg:grid-cols-12 lg:py-28">
           <div className="lg:col-span-7">
-            <span className="label text-coral">A completely normal question</span>
+            <span className="label text-coral">
+              A completely normal question
+            </span>
             <h2 className="mt-4 max-w-[11ch] font-display text-[3.2rem] font-extrabold leading-[0.86] tracking-[-0.03em] sm:text-8xl">
-              Why are you <span className="bg-coral px-2 text-paper">emailing</span> yourself?
+              Why are you{" "}
+              <span className="bg-coral px-2 text-paper">emailing</span>{" "}
+              yourself?
             </h2>
           </div>
           <div className="lg:col-span-5">
@@ -1462,7 +1621,9 @@ function CampaignSections({ onSwitchToReceive }: { onSwitchToReceive: () => void
                   <span className="border-2 border-ink bg-paper px-3 py-2 text-sm font-bold line-through decoration-coral decoration-2">
                     {step}
                   </span>
-                  {index < oldWay.length - 1 && <span className="text-coral">→</span>}
+                  {index < oldWay.length - 1 && (
+                    <span className="text-coral">→</span>
+                  )}
                 </div>
               ))}
             </div>
@@ -1485,13 +1646,20 @@ function CampaignSections({ onSwitchToReceive }: { onSwitchToReceive: () => void
               Anything you send to yourself, you can Pigeon.
             </h2>
             <div className="mt-8 flex flex-wrap gap-2">
-              {["Lecture slides", "A screenshot", "That one video", "A link", "Your ID scan"].map(
-                (item) => (
-                  <span key={item} className="border-2 border-paper px-3 py-1.5 text-sm font-bold">
-                    {item}
-                  </span>
-                ),
-              )}
+              {[
+                "Lecture slides",
+                "A screenshot",
+                "That one video",
+                "A link",
+                "Your ID scan",
+              ].map((item) => (
+                <span
+                  key={item}
+                  className="border-2 border-paper px-3 py-1.5 text-sm font-bold"
+                >
+                  {item}
+                </span>
+              ))}
             </div>
           </div>
           <div className="relative min-h-[22rem] overflow-hidden border-2 border-ink bg-paper p-7 text-ink">
@@ -1548,13 +1716,25 @@ function CampaignSections({ onSwitchToReceive }: { onSwitchToReceive: () => void
           ].map((item) => (
             <div
               key={item.n}
-              className={cn("relative overflow-hidden border-2 border-ink p-6", item.bg, item.fg)}
+              className={cn(
+                "relative overflow-hidden border-2 border-ink p-6",
+                item.bg,
+                item.fg,
+              )}
             >
-              <span className="font-mono text-xs font-bold opacity-60">{item.n}</span>
-              <h3 className="mt-6 font-display text-6xl font-extrabold leading-none">{item.t}</h3>
+              <span className="font-mono text-xs font-bold opacity-60">
+                {item.n}
+              </span>
+              <h3 className="mt-6 font-display text-6xl font-extrabold leading-none">
+                {item.t}
+              </h3>
               <p className="mt-3 max-w-[26ch] text-sm opacity-80">{item.d}</p>
               <span className="pointer-events-none absolute -bottom-6 -right-6 w-28 rotate-12 opacity-25">
-                <Pigeon state="idle" wingClass="fill-acid" beakClass="fill-coral" />
+                <Pigeon
+                  state="idle"
+                  wingClass="fill-acid"
+                  beakClass="fill-coral"
+                />
               </span>
             </div>
           ))}

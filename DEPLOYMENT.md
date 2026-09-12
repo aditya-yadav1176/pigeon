@@ -111,13 +111,14 @@ Under **Environment Variables**, add:
 - **Cold Start Delay**: If sleeping, the first incoming request may take 30–60 seconds to wake up the server. Subsequent requests will be fast.
 - This is standard and expected for Phase 7 testing.
 
-### B. Temporary Filesystem Storage
-- All transferred files are stored temporarily on the local disk (`backend/storage/`).
-- Files and rooms are automatically cleaned up when:
-  1. Room TTL (10 minutes) expires.
-  2. The room completes transfer.
-  3. The Render container restarts or spins down.
-- Filesystem storage is **not persistent**. Persistent object storage (e.g., S3/R2) is deferred to a future phase.
+### B. Temporary Filesystem Storage (Phase 10 Hardened Lifecycle)
+- All transferred files are stored temporarily on the local disk (`backend/storage/<room_code>/`).
+- **Render Ephemeral Disk Warning**: Render container filesystems are strictly ephemeral. Any files and in-memory rooms will reset if the Render instance restarts, sleeps due to inactivity, or redeploys.
+- **Automated Lifecycle Purge**:
+  1. Room TTL (10 minutes) automatically expires active transfers.
+  2. The background cleanup loop runs every 30 seconds to wipe expired room metadata and run `shutil.rmtree` on disk storage.
+  3. Orphaned disk directories from past crashes, aborted client sessions, or server restarts are automatically detected and purged on boot and during periodic sweeps.
+- **No Cloud Database or S3**: PIGEON is designed without persistent database or object storage dependencies in this phase.
 
 ---
 
@@ -131,12 +132,11 @@ Under **Environment Variables**, add:
    - Open browser: `https://<your-app-name>.vercel.app`
    - In the **Send** tab, tap to select a photo, document, or paste a note.
    - Tap **Send across**.
-   - Verify upload progress bar reaches 100% and a 6-character room code appears (e.g., `ABCD-EF`).
    - Verify upload progress bar reaches 100% and a 5-character room code appears (e.g., `K7M4P`).
 2. **On Laptop (Home/Office Wi-Fi)**:
    - Open browser: `https://<your-app-name>.vercel.app`
    - Click **Receive** tab.
-   - Enter the code displayed on your phone.
+   - Enter the 5-character code displayed on your phone.
    - Verify the file cards appear with accurate name, size, and type.
    - Click **Download** (or **Download All**).
    - Open downloaded file and confirm byte-for-byte integrity.
@@ -145,13 +145,13 @@ Under **Environment Variables**, add:
 1. **On Laptop (Wi-Fi)**:
    - Select or drag and drop files into the **Send** tab.
    - Click **Send across**.
-   - Note the generated room code.
+   - Note the generated 5-character room code.
 2. **On Phone (Cellular Data)**:
    - Go to **Receive** tab.
    - Type in the code.
    - Download the files directly to your phone.
 
 ### Test 3: Expiration & Edge Cases
-1. Wait 10 minutes (room TTL) or enter an invalid code (e.g., `ZZZZ-99`).
-2. Verify friendly error messaging ("That Pigeon code doesn't exist or has expired").
+1. Wait 10 minutes (room TTL) or enter an invalid code (e.g., `ZZ999`).
+2. Verify friendly error messaging ("That Pigeon code doesn't exist or has expired. Ask the sender for a fresh code.").
 
