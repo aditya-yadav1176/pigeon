@@ -217,11 +217,29 @@
   animation: qr-reveal 0.45s ease-out both;
 }
 
+@keyframes marquee-scroll {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+.animate-marquee {
+  display: flex;
+  width: max-content;
+  will-change: transform;
+  animation: marquee-scroll 30s linear infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .dispatch-dot,
   .animate-pigeon,
-  .qr-reveal {
-    animation: none;
+  .qr-reveal,
+  .animate-marquee {
+    animation: none !important;
+    transform: none !important;
   }
   *,
   *::before,

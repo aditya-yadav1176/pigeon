@@ -633,16 +633,43 @@ export function PigeonExperience() {
           </section>
 
           {/* ---------------- TICKER ---------------- */}
-          <div className="relative overflow-hidden border-y-2 border-ink bg-cobalt py-2.5 text-paper">
-            <div className="marquee flex w-max gap-8 whitespace-nowrap font-display text-sm font-extrabold uppercase tracking-[0.24em]">
-              {Array.from({ length: 8 }).map((_, index) => (
-                <span key={index} className="flex items-center gap-8">
-                  Open <span className="text-acid">·</span> Drop{" "}
-                  <span className="text-acid">·</span> Code{" "}
-                  <span className="text-acid">·</span> Done{" "}
-                  <span className="text-acid">✦</span>
-                </span>
-              ))}
+          <div
+            className="relative w-full overflow-hidden border-y-2 border-ink bg-cobalt py-2.5 text-paper select-none"
+            aria-label="Product workflow: Open, Drop, Code, Done"
+          >
+            <div className="animate-marquee flex w-max">
+              {/* Primary Marquee Track Segment */}
+              <div className="flex shrink-0 items-center gap-8 pr-8 font-display text-sm font-extrabold uppercase tracking-[0.24em]">
+                {Array.from({ length: 8 }).map((_, index) => (
+                  <span
+                    key={`ticker-a-${index}`}
+                    className="flex items-center gap-8"
+                  >
+                    Open <span className="text-acid">·</span> Drop{" "}
+                    <span className="text-acid">·</span> Code{" "}
+                    <span className="text-acid">·</span> Done{" "}
+                    <span className="text-acid">✦</span>
+                  </span>
+                ))}
+              </div>
+
+              {/* Duplicate Marquee Track Segment (Enables Seamless Infinite Loop) */}
+              <div
+                className="flex shrink-0 items-center gap-8 pr-8 font-display text-sm font-extrabold uppercase tracking-[0.24em]"
+                aria-hidden="true"
+              >
+                {Array.from({ length: 8 }).map((_, index) => (
+                  <span
+                    key={`ticker-b-${index}`}
+                    className="flex items-center gap-8"
+                  >
+                    Open <span className="text-acid">·</span> Drop{" "}
+                    <span className="text-acid">·</span> Code{" "}
+                    <span className="text-acid">·</span> Done{" "}
+                    <span className="text-acid">✦</span>
+                  </span>
+                ))}
+              </div>
             </div>
           </div>
 
