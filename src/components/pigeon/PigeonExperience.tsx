@@ -502,41 +502,42 @@ export function PigeonExperience() {
       <div className="min-h-screen overflow-x-clip bg-paper font-body text-ink">
         {/* Sticky Header with Send / Receive Mode Switcher */}
         <header className="sticky top-0 z-40 border-b-2 border-ink bg-paper">
-          <div className="mx-auto grid max-w-[1440px] grid-cols-[auto_1fr_auto] items-center gap-4 px-4 py-3 sm:px-7">
+          <div className="mx-auto flex max-w-[1440px] items-center justify-between gap-2 px-3 py-2.5 sm:px-7 sm:py-3">
             <button
               type="button"
               onClick={resetAll}
-              className="flex min-w-0 items-center gap-2.5 text-left"
+              className="flex shrink-0 items-center gap-2 text-left"
               aria-label="Pigeon home"
             >
-              <span className="grid h-10 w-11 shrink-0 -rotate-3 place-items-center rounded-sm bg-ink px-1.5 text-paper">
+              <span className="grid h-9 w-10 shrink-0 -rotate-3 place-items-center rounded-sm bg-ink px-1 text-paper sm:h-10 sm:w-11 sm:px-1.5">
                 <PigeonMark className="w-full" />
               </span>
-              <span className="truncate font-display text-lg font-extrabold tracking-tight">
+              <span className="shrink-0 font-display text-base font-extrabold tracking-tight sm:text-lg">
                 PIGEON
               </span>
             </button>
 
             {/* Centered Mode Switcher */}
-            <div className="flex justify-center">
+            <div className="flex shrink-0 justify-center">
               <div className="inline-flex border-2 border-ink bg-paper p-0.5">
                 <button
                   type="button"
                   onClick={() => switchMode("send")}
                   className={cn(
-                    "px-3.5 py-1.5 font-display text-xs font-extrabold uppercase tracking-[0.14em] transition-colors sm:text-sm",
+                    "whitespace-nowrap px-2.5 py-1 font-display text-[11px] font-extrabold uppercase tracking-wider transition-colors sm:px-3.5 sm:py-1.5 sm:text-sm sm:tracking-[0.14em]",
                     mode === "send"
                       ? "bg-ink text-paper"
                       : "text-ink hover:bg-ink/10",
                   )}
                 >
-                  Send a file
+                  <span className="sm:hidden">Send</span>
+                  <span className="hidden sm:inline">Send a file</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => switchMode("receive")}
                   className={cn(
-                    "px-3.5 py-1.5 font-display text-xs font-extrabold uppercase tracking-[0.14em] transition-colors sm:text-sm",
+                    "whitespace-nowrap px-2.5 py-1 font-display text-[11px] font-extrabold uppercase tracking-wider transition-colors sm:px-3.5 sm:py-1.5 sm:text-sm sm:tracking-[0.14em]",
                     mode === "receive"
                       ? "bg-cobalt text-paper"
                       : "text-ink hover:bg-ink/10",
@@ -557,9 +558,9 @@ export function PigeonExperience() {
                   setMode("send");
                   fileInputRef.current?.click();
                 }}
-                className="h-10 rounded-none border-2 border-ink bg-acid px-3 text-ink shadow-none hover:bg-ink hover:text-paper sm:px-4"
+                className="h-9 rounded-none border-2 border-ink bg-acid px-2.5 text-xs font-bold text-ink shadow-none hover:bg-ink hover:text-paper sm:h-10 sm:px-4 sm:text-sm"
               >
-                <Plus className="h-4 w-4" />{" "}
+                <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />{" "}
                 <span className="hidden sm:inline">Drop a file</span>
                 <span className="sm:hidden">Drop</span>
               </Button>
@@ -569,18 +570,21 @@ export function PigeonExperience() {
 
         <main id="top">
           {/* ---------------- HERO POSTER ---------------- */}
-          <section className="relative mx-auto max-w-[1440px] px-4 pb-8 pt-8 sm:px-7 sm:pb-10 sm:pt-14">
-            <div className="pointer-events-none absolute -right-10 top-2 select-none font-display text-[14rem] font-extrabold leading-none text-coral/15 sm:text-[24rem] lg:-right-6">
+          <section className="relative mx-auto max-w-[1440px] overflow-hidden px-4 pb-8 pt-6 sm:overflow-visible sm:px-7 sm:pb-10 sm:pt-14">
+            <div className="pointer-events-none absolute -right-4 top-2 select-none font-display text-[9rem] font-extrabold leading-none text-coral/15 sm:-right-10 sm:text-[24rem] lg:-right-6">
               01
             </div>
 
             <div className="relative grid gap-8 lg:grid-cols-12 lg:items-end">
               <div className="relative z-10 lg:col-span-7">
-                <div className="mb-4 inline-flex items-center gap-2 border-2 border-ink bg-paper px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.18em]">
-                  <span className="h-2 w-2 rounded-full bg-acid" /> Phone{" "}
-                  <span>→</span> Pigeon <span>→</span> Laptop / Board
+                <div className="mb-4 inline-flex items-center gap-1.5 border-2 border-ink bg-paper px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider sm:gap-2 sm:px-3 sm:py-1.5 sm:text-[11px] sm:tracking-[0.18em]">
+                  <span className="h-2 w-2 shrink-0 rounded-full bg-acid" />{" "}
+                  <span className="sm:hidden">Phone → Pigeon → Laptop</span>
+                  <span className="hidden sm:inline">
+                    Phone → Pigeon → Laptop / Board
+                  </span>
                 </div>
-                <h1 className="font-display text-[3.2rem] font-extrabold leading-[0.86] tracking-[-0.03em] sm:text-8xl lg:text-[8rem]">
+                <h1 className="font-display text-[2.75rem] font-extrabold leading-[0.92] tracking-[-0.03em] min-[380px]:text-[3.2rem] sm:text-8xl lg:text-[8rem]">
                   <span className="block">Get it</span>
                   <span className="relative z-10 block">
                     <span className="relative inline-block -rotate-1 bg-acid px-2">
@@ -596,8 +600,8 @@ export function PigeonExperience() {
                 </p>
               </div>
 
-              {/* Oversized character with live state engine */}
-              <div className="pointer-events-none absolute right-[-6%] top-[-4%] z-0 w-[58%] max-w-[520px] -rotate-6 text-cobalt opacity-95 sm:w-[48%] lg:right-[-4%] lg:top-[-14%] lg:w-[44%]">
+              {/* Character with live state engine: sized and placed so it never covers the headline on mobile */}
+              <div className="pointer-events-none absolute right-1 top-2 z-0 w-24 -rotate-6 text-cobalt opacity-70 min-[380px]:w-32 min-[430px]:w-36 sm:right-[-4%] sm:top-[-14%] sm:w-[48%] sm:opacity-95 lg:w-[44%]">
                 <Pigeon
                   state={pigeonState}
                   wingClass="fill-paper/35"
@@ -1603,14 +1607,16 @@ function CampaignSections({
     <div>
       {/* POSTER 1 — The stupid old way */}
       <section className="border-t-2 border-ink">
-        <div className="mx-auto grid max-w-[1440px] gap-10 px-4 py-20 sm:px-7 lg:grid-cols-12 lg:py-28">
+        <div className="mx-auto grid max-w-[1440px] gap-8 px-4 py-12 sm:gap-10 sm:px-7 sm:py-20 lg:grid-cols-12 lg:py-28">
           <div className="lg:col-span-7">
             <span className="label text-coral">
               A completely normal question
             </span>
-            <h2 className="mt-4 max-w-[11ch] font-display text-[3.2rem] font-extrabold leading-[0.86] tracking-[-0.03em] sm:text-8xl">
+            <h2 className="mt-4 max-w-[11ch] font-display text-[2.75rem] font-extrabold leading-[1.04] tracking-[-0.03em] min-[380px]:text-[3.2rem] sm:leading-[0.88] sm:text-8xl">
               Why are you{" "}
-              <span className="bg-coral px-2 text-paper">emailing</span>{" "}
+              <span className="inline-block bg-coral px-2 py-0.5 text-paper">
+                emailing
+              </span>{" "}
               yourself?
             </h2>
           </div>
@@ -1618,7 +1624,7 @@ function CampaignSections({
             <div className="flex flex-wrap gap-2">
               {oldWay.map((step, index) => (
                 <div key={step} className="flex items-center gap-2">
-                  <span className="border-2 border-ink bg-paper px-3 py-2 text-sm font-bold line-through decoration-coral decoration-2">
+                  <span className="border-2 border-ink bg-paper px-2.5 py-1.5 text-xs font-bold line-through decoration-coral decoration-2 sm:px-3 sm:py-2 sm:text-sm">
                     {step}
                   </span>
                   {index < oldWay.length - 1 && (
@@ -1627,9 +1633,9 @@ function CampaignSections({
                 </div>
               ))}
             </div>
-            <div className="mt-8 border-2 border-ink bg-cobalt p-6 text-paper">
+            <div className="mt-8 overflow-hidden border-2 border-ink bg-cobalt p-4 sm:p-6 text-paper">
               <p className="label text-paper/60">Or</p>
-              <p className="mt-3 font-display text-4xl font-extrabold leading-none">
+              <p className="mt-2 font-display text-[1.32rem] min-[360px]:text-[1.55rem] min-[400px]:text-2xl sm:text-4xl font-extrabold leading-none tracking-tight whitespace-nowrap">
                 Drop → Code → Done.
               </p>
             </div>
@@ -1638,14 +1644,14 @@ function CampaignSections({
       </section>
 
       {/* POSTER 2 — Anything goes */}
-      <section className="border-y-2 border-ink bg-coral px-4 py-20 text-paper sm:px-7 lg:py-28">
-        <div className="mx-auto grid max-w-[1440px] items-center gap-12 lg:grid-cols-2">
+      <section className="border-y-2 border-ink bg-coral px-4 py-12 text-paper sm:px-7 sm:py-20 lg:py-28">
+        <div className="mx-auto grid max-w-[1440px] items-center gap-8 sm:gap-12 lg:grid-cols-2">
           <div>
             <span className="label text-paper/70">Anything goes</span>
-            <h2 className="mt-4 max-w-[13ch] font-display text-[3rem] font-extrabold leading-[0.86] tracking-[-0.03em] sm:text-7xl">
+            <h2 className="mt-4 max-w-[13ch] font-display text-[2.6rem] font-extrabold leading-[0.94] tracking-[-0.03em] min-[380px]:text-[3rem] sm:leading-[0.86] sm:text-7xl">
               Anything you send to yourself, you can Pigeon.
             </h2>
-            <div className="mt-8 flex flex-wrap gap-2">
+            <div className="mt-6 sm:mt-8 flex flex-wrap gap-2">
               {[
                 "Lecture slides",
                 "A screenshot",
@@ -1662,7 +1668,45 @@ function CampaignSections({
               ))}
             </div>
           </div>
-          <div className="relative min-h-[22rem] overflow-hidden border-2 border-ink bg-paper p-7 text-ink">
+
+          {/* Mobile Composition: Intentionally stacked and proportioned */}
+          <div className="flex flex-col justify-between border-2 border-ink bg-paper p-5 text-ink sm:hidden min-h-[22rem]">
+            <div className="mx-auto flex w-full max-w-[290px] items-center justify-between pt-2">
+              <div className="grid h-16 w-11 place-items-center rounded-sm border-2 border-ink bg-ink text-paper shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                <Smartphone className="h-7 w-7" />
+              </div>
+              <div className="flex items-center gap-1 font-mono text-[11px] font-extrabold text-ink/50 tracking-wider">
+                <span>←</span>
+                <span className="border border-ink/30 bg-paper px-1.5 py-0.5 font-display text-xs text-cobalt">
+                  PIGEON
+                </span>
+                <span>→</span>
+              </div>
+              <div className="grid h-16 w-24 place-items-center rounded-sm border-2 border-ink bg-surface shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                <Laptop className="h-8 w-8 text-ink" />
+              </div>
+            </div>
+
+            <div className="mx-auto my-3 w-40 -rotate-3 text-cobalt">
+              <Pigeon
+                state="sending"
+                wingClass="fill-acid"
+                beakClass="fill-coral"
+                parcelClass="fill-coral"
+              />
+            </div>
+
+            <button
+              type="button"
+              onClick={onSwitchToReceive}
+              className="w-full border-2 border-ink bg-acid px-4 py-2.5 text-center text-sm font-extrabold text-ink shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-colors hover:bg-ink hover:text-paper"
+            >
+              Works the other way, too →
+            </button>
+          </div>
+
+          {/* Desktop Composition: Original absolute poster layout */}
+          <div className="relative hidden min-h-[22rem] overflow-hidden border-2 border-ink bg-paper p-7 text-ink sm:block">
             <div className="absolute left-7 top-7 grid h-28 w-18 place-items-center border-2 border-ink bg-ink px-3 text-paper">
               <Smartphone className="h-10 w-10" />
             </div>
