@@ -234,93 +234,43 @@
 }
 
 @keyframes pigeon-shuttle-flight {
-  /* 0% to 4%: Rest/pickup at Phone */
+  /* 0% to 5%: Pause / rest at Phone */
   0%,
-  4% {
-    left: 18%;
-    top: 22%;
-    transform: translate(-50%, -50%) rotate(0deg) scaleX(1);
-  }
-  /* 7%: Takeoff dip */
-  7% {
+  5% {
     left: 20%;
-    top: 24%;
-    transform: translate(-50%, -50%) rotate(-3deg) scaleX(1);
+    top: 20%;
+    transform: translate(-50%, -50%) rotate(-6deg);
   }
-  /* 24%: Climbing arc to mid-flight apex */
-  24% {
-    left: 40%;
-    top: 10%;
-    transform: translate(-50%, -50%) rotate(-8deg) scaleX(1);
+  /* 5% to 48%: Direct diagonal slope flight from Phone to Laptop */
+  48% {
+    left: 52%;
+    top: 40%;
+    transform: translate(-50%, -50%) rotate(-6deg);
   }
-  /* 42%: Descending arc approach to Laptop */
-  42% {
-    left: 58%;
-    top: 35%;
-    transform: translate(-50%, -50%) rotate(4deg) scaleX(1);
+  /* 48% to 55%: Delivery pause on Laptop */
+  55% {
+    left: 52%;
+    top: 40%;
+    transform: translate(-50%, -50%) rotate(-6deg);
   }
-  /* 45% to 49%: Touchdown & delivery pause at Laptop */
-  45%,
-  49% {
-    left: 64%;
-    top: 43%;
-    transform: translate(-50%, -50%) rotate(0deg) scaleX(1);
+  /* 55% to 95%: Direct diagonal slope return flight from Laptop to Phone */
+  95% {
+    left: 20%;
+    top: 20%;
+    transform: translate(-50%, -50%) rotate(-6deg);
   }
-  /* 51%: Smooth horizontal turn start */
-  51% {
-    left: 64%;
-    top: 43%;
-    transform: translate(-50%, -50%) rotate(0deg) scaleX(0);
-  }
-  /* 53%: Turn complete, facing left towards Phone */
-  53% {
-    left: 64%;
-    top: 43%;
-    transform: translate(-50%, -50%) rotate(0deg) scaleX(-1);
-  }
-  /* 56%: Return takeoff dip heading back to Phone */
-  56% {
-    left: 62%;
-    top: 41%;
-    transform: translate(-50%, -50%) rotate(-3deg) scaleX(-1);
-  }
-  /* 73%: Return climbing arc to mid-flight apex */
-  73% {
-    left: 42%;
-    top: 10%;
-    transform: translate(-50%, -50%) rotate(-8deg) scaleX(-1);
-  }
-  /* 90%: Descending arc approach to Phone */
-  90% {
-    left: 24%;
-    top: 21%;
-    transform: translate(-50%, -50%) rotate(4deg) scaleX(-1);
-  }
-  /* 93% to 97%: Touchdown & delivery pause at Phone */
-  93%,
-  97% {
-    left: 18%;
-    top: 22%;
-    transform: translate(-50%, -50%) rotate(0deg) scaleX(-1);
-  }
-  /* 98.5%: Smooth horizontal turn back to right */
-  98.5% {
-    left: 18%;
-    top: 22%;
-    transform: translate(-50%, -50%) rotate(0deg) scaleX(0);
-  }
-  /* 100%: Rest/pickup position at Phone, loops seamlessly */
+  /* 95% to 100%: Pause at Phone, loops seamlessly */
   100% {
-    left: 18%;
-    top: 22%;
-    transform: translate(-50%, -50%) rotate(0deg) scaleX(1);
+    left: 20%;
+    top: 20%;
+    transform: translate(-50%, -50%) rotate(-6deg);
   }
 }
 
 .animate-pigeon-shuttle {
   position: absolute;
   will-change: left, top, transform;
-  animation: pigeon-shuttle-flight 11s ease-in-out infinite;
+  animation: pigeon-shuttle-flight 9s ease-in-out infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -332,9 +282,9 @@
     animation: none !important;
   }
   .animate-pigeon-shuttle {
-    left: 45% !important;
+    left: 36% !important;
     top: 30% !important;
-    transform: translate(-50%, -50%) rotate(0deg) scaleX(1) !important;
+    transform: translate(-50%, -50%) rotate(-6deg) !important;
   }
   *,
   *::before,
