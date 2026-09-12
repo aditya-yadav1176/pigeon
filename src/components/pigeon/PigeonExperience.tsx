@@ -677,26 +677,28 @@ export function PigeonExperience() {
           <section className="mx-auto max-w-[1440px] px-4 py-8 sm:px-7 sm:py-12">
             {/* View Mode Switching */}
             {mode === "receive" ? (
-              <ReceiveSection
-                appState={appState}
-                receiveCode={receiveCode}
-                codeError={codeError}
-                activeRoomCode={activeRoom?.code}
-                room={receivedRoom}
-                onCodeChange={(code) => {
-                  setReceiveCode(code);
-                  setCodeError(null);
-                }}
-                onSubmit={handleReceiveSubmit}
-                onDownload={triggerDownload}
-                onDownloadAll={triggerDownloadAll}
-                downloadedIds={downloadedIds}
-                onReset={() => {
-                  setAppState("RECEIVER_CODE_ENTRY");
-                  setReceivedRoom(null);
-                  setCodeError(null);
-                }}
-              />
+              <div className="mx-auto w-full max-w-2xl">
+                <ReceiveSection
+                  appState={appState}
+                  receiveCode={receiveCode}
+                  codeError={codeError}
+                  activeRoomCode={activeRoom?.code}
+                  room={receivedRoom}
+                  onCodeChange={(code) => {
+                    setReceiveCode(code);
+                    setCodeError(null);
+                  }}
+                  onSubmit={handleReceiveSubmit}
+                  onDownload={triggerDownload}
+                  onDownloadAll={triggerDownloadAll}
+                  downloadedIds={downloadedIds}
+                  onReset={() => {
+                    setAppState("RECEIVER_CODE_ENTRY");
+                    setReceivedRoom(null);
+                    setCodeError(null);
+                  }}
+                />
+              </div>
             ) : [
                 "READY",
                 "WAITING_FOR_RECEIVER",
@@ -1416,7 +1418,7 @@ function ReceiveSection({
       ) : (
         /* CODE ENTRY SCREEN */
         <section className="relative border-2 border-ink bg-surface p-6 shadow-poster sm:p-10">
-          <div className="mx-auto max-w-2xl">
+          <div className="w-full">
             <div className="flex items-center justify-between">
               <span className="label">Receiver · 02</span>
               <span className="h-2.5 w-2.5 rounded-full bg-cobalt" />
@@ -1696,62 +1698,33 @@ function CampaignSections({
             </div>
           </div>
 
-          {/* Mobile Composition: Intentionally stacked and proportioned */}
-          <div className="flex flex-col justify-between border-2 border-ink bg-paper p-5 text-ink sm:hidden min-h-[22rem]">
-            <div className="mx-auto flex w-full max-w-[290px] items-center justify-between pt-2">
-              <div className="grid h-16 w-11 place-items-center rounded-sm border-2 border-ink bg-ink text-paper shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
-                <Smartphone className="h-7 w-7" />
-              </div>
-              <div className="flex items-center gap-1 font-mono text-[11px] font-extrabold text-ink/50 tracking-wider">
-                <span>←</span>
-                <span className="border border-ink/30 bg-paper px-1.5 py-0.5 font-display text-xs text-cobalt">
-                  PIGEON
-                </span>
-                <span>→</span>
-              </div>
-              <div className="grid h-16 w-24 place-items-center rounded-sm border-2 border-ink bg-surface shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
-                <Laptop className="h-8 w-8 text-ink" />
-              </div>
+          {/* Continuous Journey Illustration: Phone ⇄ Laptop with Endless Flying Pigeon */}
+          <div className="relative min-h-[22rem] sm:min-h-[24rem] overflow-hidden border-2 border-ink bg-paper p-5 sm:p-7 text-ink select-none">
+            {/* Phone Device on Left */}
+            <div className="absolute left-5 top-5 sm:left-7 sm:top-7 z-10 grid h-20 w-13 sm:h-28 sm:w-18 place-items-center rounded-sm border-2 border-ink bg-ink px-2 sm:px-3 text-paper shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+              <Smartphone className="h-7 w-7 sm:h-10 sm:w-10" />
             </div>
 
-            <div className="mx-auto my-3 w-40 -rotate-3 text-cobalt">
+            {/* Laptop Device on Right */}
+            <div className="absolute bottom-14 right-5 sm:bottom-7 sm:right-7 z-10 grid h-28 w-44 sm:h-40 sm:w-60 place-items-center rounded-sm border-[4px] sm:border-[6px] border-ink bg-surface shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+              <Laptop className="h-12 w-12 sm:h-16 sm:w-16 text-ink" />
+            </div>
+
+            {/* Continuous Flight Stage: PHONE → PIGEON FLIES → PC → PIGEON FLIES BACK → PHONE */}
+            <div className="animate-pigeon-shuttle pointer-events-none z-20 w-32 sm:w-44 text-cobalt">
               <Pigeon
-                state="sending"
+                state="uploading"
                 wingClass="fill-acid"
                 beakClass="fill-coral"
                 parcelClass="fill-coral"
               />
             </div>
 
+            {/* Bottom Action Button */}
             <button
               type="button"
               onClick={onSwitchToReceive}
-              className="w-full border-2 border-ink bg-acid px-4 py-2.5 text-center text-sm font-extrabold text-ink shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-colors hover:bg-ink hover:text-paper"
-            >
-              Works the other way, too →
-            </button>
-          </div>
-
-          {/* Desktop Composition: Original absolute poster layout */}
-          <div className="relative hidden min-h-[22rem] overflow-hidden border-2 border-ink bg-paper p-7 text-ink sm:block">
-            <div className="absolute left-7 top-7 grid h-28 w-18 place-items-center border-2 border-ink bg-ink px-3 text-paper">
-              <Smartphone className="h-10 w-10" />
-            </div>
-            <div className="absolute bottom-7 right-7 grid h-40 w-60 place-items-center border-[6px] border-ink bg-surface">
-              <Laptop className="h-16 w-16 text-ink" />
-            </div>
-            <span className="absolute left-[34%] top-[30%] w-44 -rotate-6 text-cobalt sm:w-56">
-              <Pigeon
-                state="sending"
-                wingClass="fill-acid"
-                beakClass="fill-coral"
-                parcelClass="fill-coral"
-              />
-            </span>
-            <button
-              type="button"
-              onClick={onSwitchToReceive}
-              className="absolute bottom-6 left-6 border-2 border-ink bg-acid px-4 py-2 text-sm font-extrabold text-ink transition-colors hover:bg-ink hover:text-paper"
+              className="absolute bottom-4 left-5 sm:bottom-6 sm:left-6 z-20 border-2 border-ink bg-acid px-3.5 py-2 sm:px-4 sm:py-2 text-xs sm:text-sm font-extrabold text-ink shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-colors hover:bg-ink hover:text-paper"
             >
               Works the other way, too →
             </button>

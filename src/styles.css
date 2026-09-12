@@ -233,13 +233,108 @@
   animation: marquee-scroll 60s linear infinite;
 }
 
+@keyframes pigeon-shuttle-flight {
+  /* 0% to 4%: Rest/pickup at Phone */
+  0%,
+  4% {
+    left: 18%;
+    top: 22%;
+    transform: translate(-50%, -50%) rotate(0deg) scaleX(1);
+  }
+  /* 7%: Takeoff dip */
+  7% {
+    left: 20%;
+    top: 24%;
+    transform: translate(-50%, -50%) rotate(-3deg) scaleX(1);
+  }
+  /* 24%: Climbing arc to mid-flight apex */
+  24% {
+    left: 40%;
+    top: 10%;
+    transform: translate(-50%, -50%) rotate(-8deg) scaleX(1);
+  }
+  /* 42%: Descending arc approach to Laptop */
+  42% {
+    left: 58%;
+    top: 35%;
+    transform: translate(-50%, -50%) rotate(4deg) scaleX(1);
+  }
+  /* 45% to 49%: Touchdown & delivery pause at Laptop */
+  45%,
+  49% {
+    left: 64%;
+    top: 43%;
+    transform: translate(-50%, -50%) rotate(0deg) scaleX(1);
+  }
+  /* 51%: Smooth horizontal turn start */
+  51% {
+    left: 64%;
+    top: 43%;
+    transform: translate(-50%, -50%) rotate(0deg) scaleX(0);
+  }
+  /* 53%: Turn complete, facing left towards Phone */
+  53% {
+    left: 64%;
+    top: 43%;
+    transform: translate(-50%, -50%) rotate(0deg) scaleX(-1);
+  }
+  /* 56%: Return takeoff dip heading back to Phone */
+  56% {
+    left: 62%;
+    top: 41%;
+    transform: translate(-50%, -50%) rotate(-3deg) scaleX(-1);
+  }
+  /* 73%: Return climbing arc to mid-flight apex */
+  73% {
+    left: 42%;
+    top: 10%;
+    transform: translate(-50%, -50%) rotate(-8deg) scaleX(-1);
+  }
+  /* 90%: Descending arc approach to Phone */
+  90% {
+    left: 24%;
+    top: 21%;
+    transform: translate(-50%, -50%) rotate(4deg) scaleX(-1);
+  }
+  /* 93% to 97%: Touchdown & delivery pause at Phone */
+  93%,
+  97% {
+    left: 18%;
+    top: 22%;
+    transform: translate(-50%, -50%) rotate(0deg) scaleX(-1);
+  }
+  /* 98.5%: Smooth horizontal turn back to right */
+  98.5% {
+    left: 18%;
+    top: 22%;
+    transform: translate(-50%, -50%) rotate(0deg) scaleX(0);
+  }
+  /* 100%: Rest/pickup position at Phone, loops seamlessly */
+  100% {
+    left: 18%;
+    top: 22%;
+    transform: translate(-50%, -50%) rotate(0deg) scaleX(1);
+  }
+}
+
+.animate-pigeon-shuttle {
+  position: absolute;
+  will-change: left, top, transform;
+  animation: pigeon-shuttle-flight 11s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .dispatch-dot,
   .animate-pigeon,
   .qr-reveal,
-  .animate-marquee {
+  .animate-marquee,
+  .animate-pigeon-shuttle {
     animation: none !important;
-    transform: none !important;
+  }
+  .animate-pigeon-shuttle {
+    left: 45% !important;
+    top: 30% !important;
+    transform: translate(-50%, -50%) rotate(0deg) scaleX(1) !important;
   }
   *,
   *::before,
