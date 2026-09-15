@@ -44,6 +44,7 @@ import {
   type TransferPayload,
   type TransferRoom,
 } from "@/services/transfer";
+import { ScrollReveal } from "@/components/ui/ScrollReveal";
 import { Pigeon, PigeonMark } from "./Pigeon";
 import type { PigeonState } from "./pigeon.types";
 
@@ -192,6 +193,29 @@ export function PigeonExperience() {
   const [copied, setCopied] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [downloadedIds, setDownloadedIds] = useState<string[]>([]);
+  const [scrollTilt, setScrollTilt] = useState(0);
+
+  // Subtle scroll-linked reactive moment for the hero Pigeon (restrained, 0-3 deg tilt)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    let ticking = false;
+    const handleScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          const y = window.scrollY;
+          const factor = Math.min(y / 400, 1);
+          setScrollTilt(factor * 3);
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   const pigeonState = getPigeonState(appState);
 
@@ -501,7 +525,7 @@ export function PigeonExperience() {
     <TooltipProvider delayDuration={200}>
       <div className="min-h-screen overflow-x-clip bg-paper font-body text-ink">
         {/* Sticky Header with Send / Receive Mode Switcher */}
-        <header className="sticky top-0 z-40 border-b-2 border-ink bg-paper">
+        <header className="animate-entrance-nav sticky top-0 z-40 border-b-2 border-ink bg-paper">
           <div className="mx-auto flex max-w-[1440px] items-center justify-between gap-2 px-3 py-2.5 sm:px-7 sm:py-3">
             <button
               type="button"
@@ -558,7 +582,7 @@ export function PigeonExperience() {
                   setMode("send");
                   fileInputRef.current?.click();
                 }}
-                className="h-9 rounded-none border-2 border-ink bg-acid px-2.5 text-xs font-bold text-ink shadow-none hover:bg-ink hover:text-paper sm:h-10 sm:px-4 sm:text-sm"
+                className="pigeon-interactive-btn h-9 rounded-none border-2 border-ink bg-acid px-2.5 text-xs font-bold text-ink shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:bg-ink hover:text-paper sm:h-10 sm:px-4 sm:text-sm"
               >
                 <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />{" "}
                 <span className="hidden sm:inline">Drop a file</span>
@@ -576,7 +600,7 @@ export function PigeonExperience() {
             </div>
 
             <div className="relative grid gap-8 lg:grid-cols-12 lg:items-end">
-              <div className="relative z-10 lg:col-span-7">
+              <div className="animate-entrance-headline relative z-10 lg:col-span-7">
                 <div className="mb-4 inline-flex items-center gap-1.5 border-2 border-ink bg-paper px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider sm:gap-2 sm:px-3 sm:py-1.5 sm:text-[11px] sm:tracking-[0.18em]">
                   <span className="h-2 w-2 shrink-0 rounded-full bg-acid" />{" "}
                   <span className="sm:hidden">Phone → Pigeon → Laptop</span>
@@ -601,7 +625,12 @@ export function PigeonExperience() {
               </div>
 
               {/* Character with live state engine: sized and placed so it never covers the headline on mobile */}
-              <div className="pointer-events-none absolute right-1 top-2 z-0 w-24 -rotate-6 text-cobalt opacity-70 min-[380px]:w-32 min-[430px]:w-36 sm:right-[-4%] sm:top-[-14%] sm:w-[48%] sm:opacity-95 lg:w-[44%]">
+              <div
+                className="animate-entrance-pigeon pointer-events-none absolute right-1 top-2 z-0 w-24 text-cobalt opacity-70 min-[380px]:w-32 min-[430px]:w-36 sm:right-[-4%] sm:top-[-14%] sm:w-[48%] sm:opacity-95 lg:w-[44%]"
+                style={{
+                  transform: `rotate(${-6 + scrollTilt}deg) translateY(${scrollTilt * 1.5}px)`,
+                }}
+              >
                 <Pigeon
                   state={pigeonState}
                   wingClass="fill-paper/35"
@@ -610,7 +639,7 @@ export function PigeonExperience() {
                 />
               </div>
 
-              <div className="relative z-10 lg:col-span-5">
+              <div className="animate-entrance-sub relative z-10 lg:col-span-5">
                 <div className="flex flex-wrap gap-2">
                   {["OPEN", "DROP", "CODE", "DONE"].map((word, index) => (
                     <span
@@ -634,7 +663,7 @@ export function PigeonExperience() {
 
           {/* ---------------- TICKER ---------------- */}
           <div
-            className="relative w-full overflow-hidden border-y-2 border-ink bg-cobalt py-2.5 text-paper select-none"
+            className="animate-entrance-ticker relative w-full overflow-hidden border-y-2 border-ink bg-cobalt py-2.5 text-paper select-none"
             aria-label="Product workflow: Open, Drop, Code, Done"
           >
             <div className="animate-marquee flex w-max">
@@ -674,7 +703,7 @@ export function PigeonExperience() {
           </div>
 
           {/* ---------------- THE MACHINE ---------------- */}
-          <section className="mx-auto max-w-[1440px] px-4 py-8 sm:px-7 sm:py-12">
+          <section className="animate-entrance-card mx-auto max-w-[1440px] px-4 py-8 sm:px-7 sm:py-12">
             {/* View Mode Switching */}
             {mode === "receive" ? (
               <div className="mx-auto w-full max-w-2xl">
@@ -876,14 +905,14 @@ export function PigeonExperience() {
                         <div className="mt-7 grid gap-2 sm:grid-cols-2">
                           <Button
                             onClick={() => fileInputRef.current?.click()}
-                            className="h-12 rounded-none border-2 border-ink bg-cobalt text-paper shadow-none hover:bg-ink"
+                            className="pigeon-interactive-btn h-12 rounded-none border-2 border-ink bg-cobalt text-paper shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:bg-ink"
                           >
                             <Upload className="mr-2 h-4 w-4" /> Choose files
                           </Button>
                           <Button
                             onClick={() => setTextOpen(true)}
                             variant="outline"
-                            className="h-12 rounded-none border-2 border-ink bg-paper"
+                            className="pigeon-interactive-btn h-12 rounded-none border-2 border-ink bg-paper shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
                           >
                             <Clipboard className="mr-2 h-4 w-4" /> Paste text
                           </Button>
@@ -923,7 +952,10 @@ export function PigeonExperience() {
           <CampaignSections onSwitchToReceive={() => switchMode("receive")} />
         </main>
 
-        <footer className="border-t-2 border-ink bg-paper px-4 py-8 sm:px-7">
+        <ScrollReveal
+          as="footer"
+          className="border-t-2 border-ink bg-paper px-4 py-8 sm:px-7"
+        >
           <div className="mx-auto flex max-w-[1440px] flex-col justify-between gap-4 sm:flex-row sm:items-center">
             <div className="flex items-center gap-2 font-display font-extrabold">
               <span className="w-10 text-cobalt">
@@ -935,7 +967,7 @@ export function PigeonExperience() {
               Built for the “it’s on my phone” problem.
             </p>
           </div>
-        </footer>
+        </ScrollReveal>
 
         {/* Dialog for Text Sharing */}
         <Dialog open={textOpen} onOpenChange={setTextOpen}>
@@ -1115,7 +1147,12 @@ function CodeMoment({
                     <Button
                       onClick={onCopy}
                       variant="outline"
-                      className="h-11 rounded-none border-2 border-paper bg-paper text-ink hover:bg-acid hover:text-ink"
+                      className={cn(
+                        "pigeon-interactive-btn h-11 rounded-none border-2 font-bold transition-all",
+                        copied
+                          ? "border-acid bg-acid text-ink shadow-[2px_2px_0px_0px_rgba(255,255,255,0.8)]"
+                          : "border-paper bg-paper text-ink hover:bg-acid hover:text-ink shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]",
+                      )}
                     >
                       {copied ? (
                         <Check className="h-4 w-4" />
@@ -1127,7 +1164,7 @@ function CodeMoment({
                     <Button
                       onClick={onShare}
                       variant="ghost"
-                      className="h-11 rounded-none text-paper hover:bg-paper/15"
+                      className="pigeon-interactive-btn h-11 rounded-none text-paper hover:bg-paper/15"
                     >
                       <Share2 className="h-4 w-4" />
                     </Button>
@@ -1185,7 +1222,7 @@ function CodeMoment({
             <div className="mt-6 flex flex-wrap gap-3">
               <Button
                 onClick={onSwitchToReceive}
-                className="h-12 rounded-none border-2 border-acid bg-acid px-5 text-ink hover:bg-paper"
+                className="pigeon-interactive-btn h-12 rounded-none border-2 border-acid bg-acid px-5 text-ink shadow-[2px_2px_0px_0px_rgba(255,255,255,0.8)] hover:bg-paper"
               >
                 <KeyRound className="mr-2 h-4 w-4" /> Test Receive Mode with
                 this Code
@@ -1336,7 +1373,7 @@ function ReceiveSection({
                   </div>
                   <Button
                     onClick={() => onDownload(payload)}
-                    className="h-11 rounded-none border-2 border-ink bg-cobalt px-4 text-paper hover:bg-ink"
+                    className="pigeon-interactive-btn h-11 rounded-none border-2 border-ink bg-cobalt px-4 text-paper shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:bg-ink"
                   >
                     {downloadedIds.includes(payload.id) ? (
                       <>
@@ -1357,7 +1394,7 @@ function ReceiveSection({
               {room.payloads.length > 1 && (
                 <Button
                   onClick={() => onDownloadAll(room.payloads)}
-                  className="h-12 rounded-none border-2 border-ink bg-ink px-6 text-paper hover:bg-cobalt"
+                  className="pigeon-interactive-btn h-12 rounded-none border-2 border-ink bg-ink px-6 text-paper shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:bg-cobalt"
                 >
                   <Download className="mr-2 h-4 w-4" /> Download All (
                   {room.payloads.length} files)
@@ -1366,7 +1403,7 @@ function ReceiveSection({
               <Button
                 onClick={onReset}
                 variant="outline"
-                className="h-12 rounded-none border-2 border-ink bg-paper px-6 text-ink hover:bg-ink hover:text-paper"
+                className="pigeon-interactive-btn h-12 rounded-none border-2 border-ink bg-paper px-6 text-ink shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:bg-ink hover:text-paper"
               >
                 <Plus className="mr-2 h-4 w-4" /> Receive another file
               </Button>
@@ -1635,7 +1672,7 @@ function CampaignSections({
   return (
     <div>
       {/* POSTER 1 — The stupid old way */}
-      <section className="border-t-2 border-ink">
+      <ScrollReveal as="section" className="border-t-2 border-ink">
         <div className="mx-auto grid max-w-[1440px] gap-8 px-4 py-12 sm:gap-10 sm:px-7 sm:py-20 lg:grid-cols-12 lg:py-28">
           <div className="lg:col-span-7">
             <span className="label text-coral">
@@ -1670,10 +1707,13 @@ function CampaignSections({
             </div>
           </div>
         </div>
-      </section>
+      </ScrollReveal>
 
       {/* POSTER 2 — Anything goes */}
-      <section className="border-y-2 border-ink bg-coral px-4 py-12 text-paper sm:px-7 sm:py-20 lg:py-28">
+      <ScrollReveal
+        as="section"
+        className="border-y-2 border-ink bg-coral px-4 py-12 text-paper sm:px-7 sm:py-20 lg:py-28"
+      >
         <div className="mx-auto grid max-w-[1440px] items-center gap-8 sm:gap-12 lg:grid-cols-2">
           <div>
             <span className="label text-paper/70">Anything goes</span>
@@ -1724,16 +1764,19 @@ function CampaignSections({
             <button
               type="button"
               onClick={onSwitchToReceive}
-              className="absolute bottom-4 left-5 sm:bottom-6 sm:left-6 z-20 border-2 border-ink bg-acid px-3.5 py-2 sm:px-4 sm:py-2 text-xs sm:text-sm font-extrabold text-ink shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-colors hover:bg-ink hover:text-paper"
+              className="pigeon-interactive-btn absolute bottom-4 left-5 sm:bottom-6 sm:left-6 z-20 border-2 border-ink bg-acid px-3.5 py-2 sm:px-4 sm:py-2 text-xs sm:text-sm font-extrabold text-ink shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-colors hover:bg-ink hover:text-paper"
             >
               Works the other way, too →
             </button>
           </div>
         </div>
-      </section>
+      </ScrollReveal>
 
       {/* POSTER 3 — Three-beat manifesto */}
-      <section className="mx-auto max-w-[1440px] px-4 py-20 sm:px-7 lg:py-28">
+      <ScrollReveal
+        as="section"
+        className="mx-auto max-w-[1440px] px-4 py-20 sm:px-7 lg:py-28"
+      >
         <div className="grid gap-4 lg:grid-cols-3">
           {[
             {
@@ -1761,7 +1804,7 @@ function CampaignSections({
             <div
               key={item.n}
               className={cn(
-                "relative overflow-hidden border-2 border-ink p-6",
+                "pigeon-card-interactive relative overflow-hidden border-2 border-ink p-6",
                 item.bg,
                 item.fg,
               )}
@@ -1783,7 +1826,7 @@ function CampaignSections({
             </div>
           ))}
         </div>
-      </section>
+      </ScrollReveal>
     </div>
   );
 }

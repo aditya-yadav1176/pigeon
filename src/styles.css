@@ -234,64 +234,82 @@
 }
 
 @keyframes pigeon-shuttle-flight {
-  /* 0% to 5%: Pause / rest at Phone, body facing right */
+  /* 0% to 4%: Brief interaction at Phone */
   0%,
-  5% {
-    left: 20%;
-    top: 20%;
-    transform: translate(-50%, -50%) scaleX(1) rotate(-6deg);
+  4% {
+    left: 18%;
+    top: 22%;
+    transform: translate(-50%, -50%) scaleX(1) rotate(-1deg);
   }
-  /* 5% to 48%: Direct diagonal slope flight from Phone to Laptop, facing right */
+  /* 4% to 12%: Smooth departure and acceleration heading toward Laptop */
+  12% {
+    left: 26%;
+    top: 27%;
+    transform: translate(-50%, -50%) scaleX(1) rotate(5deg);
+  }
+  /* 12% to 42%: Cruising diagonal flight down toward Laptop */
+  42% {
+    left: 56%;
+    top: 48%;
+    transform: translate(-50%, -50%) scaleX(1) rotate(6deg);
+  }
+  /* 42% to 48%: Deceleration and landing approach on Laptop */
   48% {
-    left: 52%;
-    top: 40%;
-    transform: translate(-50%, -50%) scaleX(1) rotate(-6deg);
+    left: 62%;
+    top: 52%;
+    transform: translate(-50%, -50%) scaleX(1) rotate(2deg);
   }
-  /* 48% to 51%: Delivery pause on Laptop, still facing right */
+  /* 48% to 51%: Brief delivery touch-and-go at Laptop */
   51% {
-    left: 52%;
-    top: 40%;
-    transform: translate(-50%, -50%) scaleX(1) rotate(-6deg);
+    left: 62%;
+    top: 52%;
+    transform: translate(-50%, -50%) scaleX(1) rotate(0deg);
   }
-  /* 51% to 54%: Seamless turn at Laptop from facing right to facing left */
+  /* 51% to 54%: Seamless banking turn at Laptop from facing right to facing left */
   52.5% {
-    left: 52%;
-    top: 40%;
-    transform: translate(-50%, -50%) scaleX(0) rotate(-6deg);
+    left: 62%;
+    top: 50%;
+    transform: translate(-50%, -50%) scaleX(0) rotate(-2deg);
   }
   54% {
-    left: 52%;
-    top: 40%;
-    transform: translate(-50%, -50%) scaleX(-1) rotate(-6deg);
+    left: 62%;
+    top: 52%;
+    transform: translate(-50%, -50%) scaleX(-1) rotate(2deg);
   }
-  /* 54% to 56%: Delivery pause / poised at Laptop, facing left towards Phone */
-  56% {
-    left: 52%;
-    top: 40%;
-    transform: translate(-50%, -50%) scaleX(-1) rotate(-6deg);
+  /* 54% to 62%: Departure and acceleration from Laptop toward Phone */
+  62% {
+    left: 54%;
+    top: 47%;
+    transform: translate(-50%, -50%) scaleX(-1) rotate(6deg);
   }
-  /* 56% to 94%: Direct diagonal slope return flight from Laptop to Phone, facing left */
-  94% {
-    left: 20%;
+  /* 62% to 92%: Cruising return flight along diagonal slope to Phone */
+  92% {
+    left: 24%;
+    top: 26%;
+    transform: translate(-50%, -50%) scaleX(-1) rotate(6deg);
+  }
+  /* 92% to 96%: Deceleration and landing approach at Phone */
+  96% {
+    left: 18%;
+    top: 22%;
+    transform: translate(-50%, -50%) scaleX(-1) rotate(2deg);
+  }
+  /* 96% to 97.5%: Brief delivery interaction at Phone */
+  97.5% {
+    left: 18%;
+    top: 22%;
+    transform: translate(-50%, -50%) scaleX(-1) rotate(0deg);
+  }
+  /* 97.5% to 100%: Seamless banking turn back to facing right */
+  98.8% {
+    left: 18%;
     top: 20%;
-    transform: translate(-50%, -50%) scaleX(-1) rotate(-6deg);
-  }
-  /* 94% to 97%: Delivery pause at Phone, still facing left */
-  97% {
-    left: 20%;
-    top: 20%;
-    transform: translate(-50%, -50%) scaleX(-1) rotate(-6deg);
-  }
-  /* 97% to 100%: Seamless turn at Phone from facing left back to facing right */
-  98.5% {
-    left: 20%;
-    top: 20%;
-    transform: translate(-50%, -50%) scaleX(0) rotate(-6deg);
+    transform: translate(-50%, -50%) scaleX(0) rotate(-2deg);
   }
   100% {
-    left: 20%;
-    top: 20%;
-    transform: translate(-50%, -50%) scaleX(1) rotate(-6deg);
+    left: 18%;
+    top: 22%;
+    transform: translate(-50%, -50%) scaleX(1) rotate(-1deg);
   }
 }
 
@@ -301,19 +319,151 @@
   animation: pigeon-shuttle-flight 10s ease-in-out infinite;
 }
 
+/* ==========================================================================
+   PAGE-LOAD ENTRANCE MOTIONS (Hardware accelerated, non-blocking)
+   Staggered cascade within 700ms - 1000ms. Immediate interactivity.
+   ========================================================================== */
+@keyframes entrance-fade-down {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes entrance-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes entrance-scale-settle {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.animate-entrance-nav {
+  animation: entrance-fade-down 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-entrance-headline {
+  animation: entrance-fade-up 0.55s cubic-bezier(0.16, 1, 0.3, 1) 0.08s both;
+}
+
+.animate-entrance-sub {
+  animation: entrance-fade-up 0.55s cubic-bezier(0.16, 1, 0.3, 1) 0.16s both;
+}
+
+.animate-entrance-card {
+  animation: entrance-scale-settle 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.24s both;
+}
+
+.animate-entrance-pigeon {
+  animation: entrance-scale-settle 0.65s cubic-bezier(0.2, 1.15, 0.35, 1) 0.3s both;
+}
+
+.animate-entrance-ticker {
+  animation: entrance-fade-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.38s both;
+}
+
+/* ==========================================================================
+   SCROLL REVEAL UTILITIES (Used by ScrollReveal component)
+   ========================================================================== */
+.reveal-item {
+  opacity: 0;
+  transform: translateY(22px);
+  transition: opacity 0.55s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.55s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
+}
+
+.reveal-item.is-revealed {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ==========================================================================
+   TACTILE HOVER & MICRO-INTERACTION POLISH
+   Subtle physical feedback without cartoonish scaling or glowing effects
+   ========================================================================== */
+.pigeon-interactive-btn {
+  transition: transform 0.18s cubic-bezier(0.2, 0.8, 0.3, 1),
+              box-shadow 0.18s cubic-bezier(0.2, 0.8, 0.3, 1),
+              background-color 0.18s ease;
+}
+
+.pigeon-interactive-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 4px 4px 0px 0px rgba(0, 0, 0, 1);
+}
+
+.pigeon-interactive-btn:active:not(:disabled) {
+  transform: translateY(1px);
+  box-shadow: 1px 1px 0px 0px rgba(0, 0, 0, 1);
+}
+
+.pigeon-card-interactive {
+  transition: transform 0.22s cubic-bezier(0.2, 0.8, 0.3, 1),
+              box-shadow 0.22s cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+
+.pigeon-card-interactive:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 20px 48px -24px color-mix(in oklab, var(--ink) 48%, transparent);
+}
+
+/* ==========================================================================
+   ACCESSIBILITY: PREFERS-REDUCED-MOTION
+   ========================================================================== */
 @media (prefers-reduced-motion: reduce) {
   .dispatch-dot,
   .animate-pigeon,
   .qr-reveal,
   .animate-marquee,
-  .animate-pigeon-shuttle {
+  .animate-pigeon-shuttle,
+  .animate-entrance-nav,
+  .animate-entrance-headline,
+  .animate-entrance-sub,
+  .animate-entrance-card,
+  .animate-entrance-pigeon,
+  .animate-entrance-ticker {
     animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
   }
+
+  .reveal-item {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+
+  .pigeon-interactive-btn,
+  .pigeon-card-interactive {
+    transform: none !important;
+    transition: none !important;
+  }
+
   .animate-pigeon-shuttle {
-    left: 36% !important;
-    top: 30% !important;
-    transform: translate(-50%, -50%) rotate(-6deg) !important;
+    left: 42% !important;
+    top: 36% !important;
+    transform: translate(-50%, -50%) rotate(-4deg) !important;
   }
+
   *,
   *::before,
   *::after {

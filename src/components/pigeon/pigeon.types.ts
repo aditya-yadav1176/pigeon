@@ -40,9 +40,12 @@ export interface PigeonParts {
   body?: PigeonPartProps | undefined;
   head?: PigeonPartProps | undefined;
   neck?: PigeonPartProps | undefined;
+  neckBand?: PigeonPartProps | undefined;
   beak?: PigeonPartProps | undefined;
+  cere?: PigeonPartProps | undefined;
   eye?: PigeonPartProps | undefined;
   wing?: PigeonPartProps | undefined;
+  wingCoverts?: PigeonPartProps | undefined;
   legs?: PigeonPartProps | undefined;
   parcel?: PigeonPartProps | undefined;
   checkmark?: PigeonPartProps | undefined;

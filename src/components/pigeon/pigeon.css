@@ -17,7 +17,7 @@
     transform: translateY(0px) rotate(0deg);
   }
   50% {
-    transform: translateY(-2.5px) rotate(0.4deg);
+    transform: translateY(-2.2px) rotate(0.4deg);
   }
 }
 
@@ -28,7 +28,7 @@
     transform: translateY(0px) rotate(0deg);
   }
   50% {
-    transform: translateY(-1.5px) rotate(0.3deg);
+    transform: translateY(-1.4px) rotate(0.3deg);
   }
 }
 
@@ -36,21 +36,30 @@
 @keyframes pigeon-drag-anticipate {
   0%,
   100% {
-    transform: translateY(-2px) rotate(-2deg);
+    transform: translateY(-2.5px) rotate(-2deg);
   }
   50% {
-    transform: translateY(-4.5px) rotate(-0.5deg);
+    transform: translateY(-5px) rotate(-0.5deg);
   }
 }
 
-/** UPLOADING: Buoyant, steady work rhythm communicating continuous action */
+/** UPLOADING: Buoyant, synchronized avian flight body bounce */
 @keyframes pigeon-upload-bounce {
   0%,
   100% {
     transform: translateY(0px) rotate(0deg);
   }
-  50% {
-    transform: translateY(-4.5px) rotate(1.5deg);
+  35% {
+    /* Wing reaches apex: body dips slightly in compression */
+    transform: translateY(1.2px) rotate(-0.8deg);
+  }
+  68% {
+    /* Wing downstroke: body surges upward with lift */
+    transform: translateY(-4.2px) rotate(1.4deg);
+  }
+  86% {
+    /* Settle */
+    transform: translateY(-1.2px) rotate(0.4deg);
   }
 }
 
@@ -195,27 +204,58 @@
 
 /* ==========================================================================
    3. WING MOTIONS (Anatomical Shoulder Origin: 65px 42px)
+   Authentic 4-phase avian stroke: Lift → Compression → Downstroke → Recovery
    ========================================================================== */
 
-/** UPLOADING / FLAPPING: Natural bird wing stroke */
+/** UPLOADING / FLAPPING: Natural 4-phase avian wing stroke */
 @keyframes pigeon-wing-flap {
-  0%,
-  100% {
-    transform: rotate(0deg);
+  0% {
+    transform: rotate(0deg) scaleY(1);
   }
-  50% {
-    transform: rotate(-20deg) translateY(-1.5px);
+  22% {
+    /* Phase 1: Lift & feather spread (anticipation) */
+    transform: rotate(-22deg) translateY(-2px) scaleY(1.05) skewX(-2deg);
+  }
+  38% {
+    /* Phase 2: Top apex transition (compression) */
+    transform: rotate(-26deg) translateY(-3px) scaleY(0.98) skewX(-3deg);
+  }
+  65% {
+    /* Phase 3: Powerful downstroke thrust */
+    transform: rotate(6deg) translateY(1.5px) scaleY(1.04) skewX(2deg);
+  }
+  82% {
+    /* Phase 4: Feather recovery flex */
+    transform: rotate(2deg) translateY(0.5px) scaleY(0.97) skewX(1deg);
+  }
+  100% {
+    transform: rotate(0deg) scaleY(1);
   }
 }
 
-/** SENDING / FLIGHT: Energetic high-frequency flight stroke */
+/** SENDING / FLIGHT: Energetic cruise flight stroke */
 @keyframes pigeon-wing-flight {
-  0%,
-  100% {
-    transform: rotate(3deg);
+  0% {
+    transform: rotate(2deg) scaleY(1);
   }
-  50% {
-    transform: rotate(-26deg) translateY(-2.5px);
+  24% {
+    /* Quick power lift */
+    transform: rotate(-28deg) translateY(-3px) scaleY(1.06) skewX(-3deg);
+  }
+  42% {
+    /* Compression apex */
+    transform: rotate(-32deg) translateY(-3.5px) scaleY(0.97) skewX(-4deg);
+  }
+  68% {
+    /* Downward air bite */
+    transform: rotate(8deg) translateY(2px) scaleY(1.05) skewX(3deg);
+  }
+  86% {
+    /* Airflow recovery */
+    transform: rotate(4deg) translateY(0.8px) scaleY(0.98) skewX(1deg);
+  }
+  100% {
+    transform: rotate(2deg) scaleY(1);
   }
 }
 
@@ -223,10 +263,10 @@
 @keyframes pigeon-wing-idle-breath {
   0%,
   100% {
-    transform: rotate(0deg);
+    transform: rotate(0deg) translateY(0);
   }
   50% {
-    transform: rotate(-5deg);
+    transform: rotate(-4.5deg) translateY(-0.8px);
   }
 }
 
@@ -234,23 +274,26 @@
 @keyframes pigeon-wing-drag-ready {
   0%,
   100% {
-    transform: rotate(-8deg);
+    transform: rotate(-10deg) translateY(-1px);
   }
   50% {
-    transform: rotate(-12deg) translateY(-1px);
+    transform: rotate(-15deg) translateY(-2px);
   }
 }
 
 /** RECEIVING: Flaring wing down for landing brake */
 @keyframes pigeon-wing-flare {
   0% {
-    transform: rotate(-22deg);
+    transform: rotate(-24deg) translateY(-2px);
   }
-  50% {
-    transform: rotate(5deg);
+  45% {
+    transform: rotate(7deg) translateY(2px);
+  }
+  80% {
+    transform: rotate(-3deg) translateY(-0.5px);
   }
   100% {
-    transform: rotate(0deg);
+    transform: rotate(0deg) translateY(0);
   }
 }
 
