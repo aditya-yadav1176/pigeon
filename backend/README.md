@@ -6,8 +6,7 @@ Ultra-lightweight, temporary cross-device file transfer backend.
 - **Framework**: FastAPI + Python 3.11+
 - **Storage**: Local chunked streaming filesystem storage (`storage/{room_code}/`)
 - **Metadata**: In-memory store (`dict[str, Room]`)
-- **Code Generation**: Cryptographically secure `XXXX-XX` codes via `secrets`
-- **Code Generation**: Cryptographically secure 5-character unambiguous codes (no hyphen) via `secrets`
+- **Code Generation**: Cryptographically secure 5-character unambiguous codes (`CSPRNG`) via Python `secrets`
 - **TTL Expiration**: Auto-purge background task every 30 seconds
 
 ## Setup & Running

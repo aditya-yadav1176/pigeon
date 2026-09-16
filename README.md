@@ -57,7 +57,7 @@ OPEN  ──▶  DROP  ──▶  CODE  ──▶  CONNECT  ──▶  DONE
 - **Framework**: [React 19](https://react.dev/)
 - **Routing & SSR**: [TanStack Start](https://tanstack.com/start) & [TanStack Router](https://tanstack.com/router)
 - **Language**: [TypeScript](https://www.typescriptlang.org/) (strict mode)
-- **Build Tool**: [Vite 8](https://vitejs.dev/) with Cloudflare/Nitro SSR preset
+- **Build Tool**: [Vite 8](https://vitejs.dev/) & Nitro SSR engine
 - **Styling**: [Tailwind CSS 4](https://tailwindcss.com/)
 - **UI Primitives**: Radix UI (Dialog, Tooltip, Progress)
 - **Icons**: Lucide React
@@ -150,7 +150,7 @@ pigeon/
 │   ├── favicon.svg                  # Brand vector favicon
 │   └── robots.txt                   # Search crawler directives
 ├── .env.example                     # Frontend environment template
-├── AGENTS.md                        # Development & Lovable sync guidelines
+├── AGENTS.md                        # AI pair-programming and engineering guidelines
 ├── ARCHITECTURE.md                  # Comprehensive architectural specification
 ├── DEPLOYMENT.md                    # Step-by-step production deployment guide
 ├── PIGEON_DESIGN_SYSTEM.md          # Visual tokens, typography, and palette spec

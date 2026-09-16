@@ -7,23 +7,25 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
-.output
-.vinxi
+# Node / Build Outputs
+node_modules/
+dist/
+dist-ssr/
+.output/
+.vinxi/
 .tanstack/**
-.nitro
+.nitro/
 *.local
 
-# Wrangler / Cloudflare
+# Deployment / CLI Generated Artifacts
+.vercel/
 .wrangler/
 .dev.vars
 
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
-.idea
+.idea/
 .DS_Store
 *.suo
 *.ntvs*
@@ -35,9 +37,17 @@ dist-ssr
 backend/.venv/
 backend/__pycache__/
 backend/**/__pycache__/
+*.pyc
+.pytest_cache/
+
+# Storage & Runtime State
 backend/storage/*
 !backend/storage/.gitkeep
-backend/.env
-.env
-.vercel/
 
+# Environment & Secrets (Keep .env.example trackable)
+.env
+.env.*
+!.env.example
+backend/.env
+backend/.env.*
+!backend/.env.example
