@@ -68,10 +68,11 @@ class RoomManager:
         # Fallback if busy
         return "".join(secrets.choice(CODE_ALPHABET) for _ in range(5))
 
-    def create_room(self) -> Room:
+    def create_room(self, ttl_seconds: Optional[int] = None) -> Room:
         code = self.generate_code()
         normalized = self.normalize_code(code)
-        expires_at = int((time.time() + settings.ROOM_TTL_SECONDS) * 1000)
+        duration = ttl_seconds if ttl_seconds in (180, 300, 600) else settings.ROOM_TTL_SECONDS
+        expires_at = int((time.time() + duration) * 1000)
         room = Room(code=code, expires_at=expires_at)
         self.rooms[normalized] = room
         return room

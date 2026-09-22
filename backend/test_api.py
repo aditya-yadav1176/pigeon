@@ -89,6 +89,59 @@ def test_full_lifecycle():
     assert {f["name"] for f in multi_room["files"]} == {"doc.pdf", "slides.pptx", "photo.png"}
     print("[PASS] Multiple files upload (3 files) verified!")
 
+    # 10. Transfer Session Duration Feature Tests
+    import time
+    now_ms = int(time.time() * 1000)
+
+    # 10a. Default duration (600s)
+    res = client.post("/api/rooms", data={"text": "Default duration test"})
+    assert res.status_code == 201
+    default_room = res.json()
+    expected_default_ms = now_ms + (600 * 1000)
+    assert abs(default_room["expires_at"] - expected_default_ms) < 3000, "Default TTL should be 600s"
+    print("[PASS] Default room duration (600s / 10 min) verified")
+
+    # 10b. 180s (3 minutes)
+    res = client.post("/api/rooms", data={"text": "3 min test", "ttl_seconds": 180})
+    assert res.status_code == 201
+    room_180 = res.json()
+    expected_180_ms = now_ms + (180 * 1000)
+    assert abs(room_180["expires_at"] - expected_180_ms) < 3000, "TTL should be 180s"
+    print("[PASS] 3-minute room duration (180s) verified")
+
+    # 10c. 300s (5 minutes)
+    res = client.post("/api/rooms", data={"text": "5 min test", "ttl_seconds": 300})
+    assert res.status_code == 201
+    room_300 = res.json()
+    expected_300_ms = now_ms + (300 * 1000)
+    assert abs(room_300["expires_at"] - expected_300_ms) < 3000, "TTL should be 300s"
+    print("[PASS] 5-minute room duration (300s) verified")
+
+    # 10d. 600s explicit (10 minutes)
+    res = client.post("/api/rooms", data={"text": "10 min test", "ttl_seconds": 600})
+    assert res.status_code == 201
+    room_600 = res.json()
+    expected_600_ms = now_ms + (600 * 1000)
+    assert abs(room_600["expires_at"] - expected_600_ms) < 3000, "TTL should be 600s"
+    print("[PASS] 10-minute room duration (600s) verified")
+
+    # 10e. Invalid durations rejected with 400
+    for invalid_ttl in [0, 60, 120, 240, 500, 999, -180]:
+        res = client.post("/api/rooms", data={"text": "Invalid test", "ttl_seconds": invalid_ttl})
+        assert res.status_code == 400, f"Expected 400 for ttl={invalid_ttl}, got {res.status_code}"
+        assert "Invalid duration" in res.json()["detail"]
+    print("[PASS] Invalid durations strictly rejected with 400 Bad Request")
+
+    # 10f. Expiration is authoritative and not extended by connect or status check
+    code_180 = room_180["code"]
+    original_expires_at = room_180["expires_at"]
+    res = client.post(f"/api/rooms/{code_180}/connect")
+    assert res.status_code == 200
+    status_res = client.get(f"/api/rooms/{code_180}/status")
+    assert status_res.status_code == 200
+    assert status_res.json()["expires_at"] == original_expires_at, "Connecting must NOT extend expiration!"
+    print("[PASS] Expiry is strictly immutable and not extended by receiver actions")
+
     print("\n[SUCCESS] ALL BACKEND TESTS PASSED!")
 
 if __name__ == "__main__":

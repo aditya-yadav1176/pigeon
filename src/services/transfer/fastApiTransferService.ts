@@ -93,10 +93,14 @@ export class FastAPITransferService implements ITransferService {
   async uploadFiles(
     files: File[],
     onProgress?: UploadProgressCallback,
+    ttlSeconds?: number,
   ): Promise<TransferRoom> {
     const formData = new FormData();
     for (const file of files) {
       formData.append("files", file);
+    }
+    if (ttlSeconds !== undefined) {
+      formData.append("ttl_seconds", ttlSeconds.toString());
     }
 
     return this.uploadFormData(formData, onProgress);
@@ -105,9 +109,13 @@ export class FastAPITransferService implements ITransferService {
   async uploadText(
     text: string,
     onProgress?: UploadProgressCallback,
+    ttlSeconds?: number,
   ): Promise<TransferRoom> {
     const formData = new FormData();
     formData.append("text", text);
+    if (ttlSeconds !== undefined) {
+      formData.append("ttl_seconds", ttlSeconds.toString());
+    }
 
     return this.uploadFormData(formData, onProgress);
   }
@@ -312,7 +320,7 @@ export class FastAPITransferService implements ITransferService {
 
     return {
       code: data.code,
-      url: `pigeon.app/r/${data.code}`,
+      url: `usepigeon.vercel.app/r/${data.code}`,
       payloads,
       totalSize: data.total_size,
       createdAt: data.created_at,

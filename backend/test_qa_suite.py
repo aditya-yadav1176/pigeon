@@ -657,6 +657,53 @@ def run_qa_suite():
         results["34. CSPRNG Code Generation"] = f"FAIL: {e}"
         print(f"[FAIL] Test 34: {e}")
 
+    # Test 35: Transfer Session Duration Feature (3 min, 5 min, 10 min)
+    try:
+        t_now = int(time.time() * 1000)
+
+        # 35a: Default TTL is 600s (10 min)
+        res_def = client.post("/api/rooms", data={"text": "Default TTL QA test"})
+        assert res_def.status_code == 201
+        data_def = res_def.json()
+        assert abs(data_def["expires_at"] - (t_now + 600000)) < 3000
+
+        # 35b: 180s (3 min)
+        res_180 = client.post("/api/rooms", data={"text": "180s TTL QA test", "ttl_seconds": 180})
+        assert res_180.status_code == 201
+        data_180 = res_180.json()
+        assert abs(data_180["expires_at"] - (t_now + 180000)) < 3000
+
+        # 35c: 300s (5 min)
+        res_300 = client.post("/api/rooms", data={"text": "300s TTL QA test", "ttl_seconds": 300})
+        assert res_300.status_code == 201
+        data_300 = res_300.json()
+        assert abs(data_300["expires_at"] - (t_now + 300000)) < 3000
+
+        # 35d: 600s explicit
+        res_600 = client.post("/api/rooms", data={"text": "600s TTL QA test", "ttl_seconds": 600})
+        assert res_600.status_code == 201
+        data_600 = res_600.json()
+        assert abs(data_600["expires_at"] - (t_now + 600000)) < 3000
+
+        # 35e: Invalid TTL strictly rejected
+        for bad_ttl in [0, 45, 120, 250, 500, 999, -300]:
+            bad_res = client.post("/api/rooms", data={"text": "Bad TTL test", "ttl_seconds": bad_ttl})
+            assert bad_res.status_code == 400
+            assert "Invalid duration" in bad_res.json()["detail"]
+
+        # 35f: Expiry is immutable and cannot be extended
+        code_test = data_180["code"]
+        orig_expiry = data_180["expires_at"]
+        client.post(f"/api/rooms/{code_test}/connect")
+        stat = client.get(f"/api/rooms/{code_test}/status").json()
+        assert stat["expires_at"] == orig_expiry, "Receiver connecting must never extend room expiry!"
+
+        results["35. Transfer Session Duration Control"] = "PASS"
+        print("[PASS] Test 35: Transfer Session Durations (180s, 300s, 600s) & Immutable Expiry Verified")
+    except Exception as e:
+        results["35. Transfer Session Duration Control"] = f"FAIL: {e}"
+        print(f"[FAIL] Test 35: {e}")
+
     print("\n==================================================")
     print("                 QA SUMMARY REPORT                ")
     print("==================================================")

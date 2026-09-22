@@ -12,7 +12,7 @@ Moving a PDF, presentation slides, an image, a video, or a text snippet between 
 
 PIGEON provides a lightweight, temporary browser-based file handoff. The sender drops files or pastes text into the web app, and PIGEON generates a short 5-character transfer code.
 
-The receiver enters that code on another device to download the files. Active rooms and files are stored temporarily on the server and automatically purged when the transfer completes or when the 10-minute countdown expires.
+The receiver enters that code on another device to download the files. Active rooms and files are stored temporarily on the server and automatically purged when the transfer completes or when the room's countdown expires.
 
 ---
 
@@ -40,7 +40,7 @@ OPEN → DROP → CODE → CONNECT → DONE
 - **Phone ↔ Laptop Support**: Tailored for fast cross-device handoffs.
 - **Multiple File Types**: Supports PDFs, PPTX decks, images, MP4 video, and plain text/links.
 - **Real-Time Progress**: Live upload progress tracking and receiver status polling.
-- **Temporary Ephemeral Rooms**: Rooms and files automatically self-destruct after 10 minutes (600s TTL).
+- **Configurable Expiration**: Senders can select room duration (3, 5, or default 10 minutes) with a live synchronized countdown.
 - **250 MB Payload Limit**: Boundary limits protect server storage from disk exhaustion.
 - **Responsive Interface**: Mobile-first layout with zero horizontal overflow across all screen sizes.
 - **Accessible Motion**: Full `prefers-reduced-motion` fallbacks across character animations and transitions.
@@ -133,7 +133,7 @@ The frontend launches at `http://localhost:3000`. It connects to `http://localho
 ## Current Limitations
 
 - **Temporary Storage Only**: Files are stored temporarily on the backend server's local disk during active transfers. PIGEON is designed for immediate handoffs, not persistent cloud storage.
-- **10-Minute Expiration**: Rooms and uploaded files are automatically deleted when the 10-minute TTL expires or the transfer is completed.
+- **Session Expiration**: Rooms and uploaded files are automatically deleted when the selected duration expires (3, 5, or default 10 minutes) or the transfer is completed.
 - **250 MB Payload Limit**: Single-session uploads cannot exceed 250 MB.
 - **Render Free-Tier Spin-Down**: On Render's free tier, the backend may spin down after a period of inactivity. The first request after sleep may take longer while the backend wakes up.
 - **Single-Instance Design**: Room metadata is held in memory, so the current backend is intended for a single running instance.

@@ -185,9 +185,12 @@ export function PigeonExperience() {
     detail: string;
   } | null>(null);
 
-  // Progress, countdown, dialogs
+  // Progress, countdown, dialogs, duration
   const [progress, setProgress] = useState(0);
-  const [seconds, setSeconds] = useState(599);
+  const [seconds, setSeconds] = useState(600);
+  const [selectedDuration, setSelectedDuration] = useState<180 | 300 | 600>(
+    600,
+  );
   const [textOpen, setTextOpen] = useState(false);
   const [textValue, setTextValue] = useState("");
   const [copied, setCopied] = useState(false);
@@ -224,21 +227,38 @@ export function PigeonExperience() {
     [activePayloads],
   );
 
-  // Room countdown timer
-  useEffect(() => {
-    if (!["READY", "WAITING_FOR_RECEIVER"].includes(appState)) return;
-    const timer = window.setInterval(
-      () => setSeconds((value) => Math.max(0, value - 1)),
-      1000,
-    );
-    return () => window.clearInterval(timer);
-  }, [appState]);
+  // Room countdown timer: synchronized from authoritative backend expiresAt
+  const targetExpiry = activeRoom?.expiresAt ?? receivedRoom?.expiresAt ?? null;
 
   useEffect(() => {
-    if (seconds === 0 && ["READY", "WAITING_FOR_RECEIVER"].includes(appState)) {
-      setAppState("EXPIRED");
-    }
-  }, [seconds, appState]);
+    if (!targetExpiry) return;
+    const activeStates: AppState[] = [
+      "READY",
+      "WAITING_FOR_RECEIVER",
+      "CONNECTED",
+      "SENDING",
+      "RECEIVING",
+      "FILES_AVAILABLE",
+      "DOWNLOADING",
+      "COMPLETED",
+    ];
+    if (!activeStates.includes(appState)) return;
+
+    const syncRemaining = () => {
+      const remaining = Math.max(
+        0,
+        Math.floor((targetExpiry - Date.now()) / 1000),
+      );
+      setSeconds(remaining);
+      if (remaining <= 0) {
+        setAppState("EXPIRED");
+      }
+    };
+
+    syncRemaining();
+    const timer = window.setInterval(syncRemaining, 1000);
+    return () => window.clearInterval(timer);
+  }, [targetExpiry, appState]);
 
   // Sender status polling: Detects when receiver connects or room expires
   useEffect(() => {
@@ -361,8 +381,10 @@ export function PigeonExperience() {
     setUploadError(null);
 
     try {
-      const room = await transferService.uploadText(trimmed, (pct) =>
-        setProgress(pct),
+      const room = await transferService.uploadText(
+        trimmed,
+        (pct) => setProgress(pct),
+        selectedDuration,
       );
       setActiveRoom(room);
       setActivePayloads(room.payloads);
@@ -393,8 +415,10 @@ export function PigeonExperience() {
     setUploadError(null);
 
     try {
-      const room = await transferService.uploadFiles(selectedFiles, (pct) =>
-        setProgress(pct),
+      const room = await transferService.uploadFiles(
+        selectedFiles,
+        (pct) => setProgress(pct),
+        selectedDuration,
       );
       setActiveRoom(room);
       setActivePayloads(room.payloads);
@@ -433,6 +457,11 @@ export function PigeonExperience() {
     try {
       const room = await transferService.joinRoom(codeToLookup);
       setReceivedRoom(room);
+      const remainingSeconds = Math.max(
+        1,
+        Math.floor((room.expiresAt - Date.now()) / 1000),
+      );
+      setSeconds(remainingSeconds);
 
       // STEP 1: CONNECTING (0.6s)
       setAppState("CONNECTING");
@@ -467,7 +496,8 @@ export function PigeonExperience() {
     setActiveRoom(null);
     setReceivedRoom(null);
     setProgress(0);
-    setSeconds(599);
+    setSeconds(600);
+    setSelectedDuration(600);
     setDownloadedIds([]);
     setTextValue("");
     setCopied(false);
@@ -485,7 +515,7 @@ export function PigeonExperience() {
     if (navigator.share) {
       await navigator.share({
         title: "Your Pigeon is ready",
-        text: `Open pigeon.app and enter code: ${code}`,
+        text: `Open usepigeon.vercel.app and enter code: ${code}`,
       });
     } else {
       await copyCode(code);
@@ -713,6 +743,8 @@ export function PigeonExperience() {
                   codeError={codeError}
                   activeRoomCode={activeRoom?.code}
                   room={receivedRoom}
+                  minutes={minutes}
+                  seconds={remainder}
                   onCodeChange={(code) => {
                     setReceiveCode(code);
                     setCodeError(null);
@@ -845,20 +877,26 @@ export function PigeonExperience() {
                       )}
 
                       {appState === "FILE_SELECTED" && (
-                        <div className="mt-auto grid gap-2 pt-5 sm:grid-cols-2">
-                          <Button
-                            onClick={startUpload}
-                            className="h-12 rounded-none border-2 border-ink bg-cobalt text-paper shadow-none hover:bg-ink"
-                          >
-                            <Upload className="mr-2 h-4 w-4" /> Send across
-                          </Button>
-                          <Button
-                            onClick={() => fileInputRef.current?.click()}
-                            variant="outline"
-                            className="h-12 rounded-none border-2 border-ink bg-paper"
-                          >
-                            <Plus className="mr-2 h-4 w-4" /> Add more
-                          </Button>
+                        <div className="mt-auto space-y-3 pt-5">
+                          <DurationSelector
+                            value={selectedDuration}
+                            onChange={setSelectedDuration}
+                          />
+                          <div className="grid gap-2 sm:grid-cols-2">
+                            <Button
+                              onClick={startUpload}
+                              className="h-12 rounded-none border-2 border-ink bg-cobalt text-paper shadow-none hover:bg-ink"
+                            >
+                              <Upload className="mr-2 h-4 w-4" /> Send across
+                            </Button>
+                            <Button
+                              onClick={() => fileInputRef.current?.click()}
+                              variant="outline"
+                              className="h-12 rounded-none border-2 border-ink bg-paper"
+                            >
+                              <Plus className="mr-2 h-4 w-4" /> Add more
+                            </Button>
+                          </div>
                         </div>
                       )}
                     </div>
@@ -988,7 +1026,12 @@ export function PigeonExperience() {
               placeholder="Paste it here…"
               className="mt-3 min-h-44 w-full resize-none border-2 border-ink bg-surface p-4 text-base outline-none focus:ring-2 focus:ring-cobalt/30"
             />
-            <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
+            <DurationSelector
+              value={selectedDuration}
+              onChange={setSelectedDuration}
+              className="mt-2"
+            />
+            <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_auto]">
               <p className="self-center text-xs text-ink/45">
                 Stays in memory for this session.
               </p>
@@ -1004,6 +1047,64 @@ export function PigeonExperience() {
         </Dialog>
       </div>
     </TooltipProvider>
+  );
+}
+
+/**
+ * Duration Selector for 3, 5, or 10-minute transfer rooms
+ */
+function DurationSelector({
+  value,
+  onChange,
+  className,
+}: {
+  value: 180 | 300 | 600;
+  onChange: (val: 180 | 300 | 600) => void;
+  className?: string;
+}) {
+  const options: Array<{ label: string; value: 180 | 300 | 600 }> = [
+    { label: "3 MIN", value: 180 },
+    { label: "5 MIN", value: 300 },
+    { label: "10 MIN", value: 600 },
+  ];
+
+  return (
+    <div className={cn("space-y-1.5", className)}>
+      <div className="flex items-center justify-between">
+        <label className="label text-[11px] text-ink/70">
+          Transfer expires in
+        </label>
+        <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-ink/50">
+          TOTAL ROOM LIFETIME
+        </span>
+      </div>
+      <div
+        role="radiogroup"
+        aria-label="Transfer duration"
+        className="grid grid-cols-3 gap-1.5 border-2 border-ink bg-surface p-1"
+      >
+        {options.map((opt) => {
+          const isSelected = value === opt.value;
+          return (
+            <button
+              key={opt.value}
+              type="button"
+              role="radio"
+              aria-checked={isSelected}
+              onClick={() => onChange(opt.value)}
+              className={cn(
+                "h-9 font-display text-xs font-extrabold uppercase tracking-wider transition-all",
+                isSelected
+                  ? "border-2 border-ink bg-cobalt text-paper shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]"
+                  : "border-2 border-transparent bg-paper text-ink/75 hover:border-ink/40 hover:text-ink",
+              )}
+            >
+              {opt.label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
@@ -1132,7 +1233,8 @@ function CodeMoment({
               is ready.
             </h2>
             <p className="mt-4 font-display text-2xl font-bold text-acid sm:text-3xl">
-              Open pigeon.app on your other device (laptop, phone, or board).
+              Open usepigeon.vercel.app on your other device (laptop, phone, or
+              board).
             </p>
 
             {/* Prominent Code Card */}
@@ -1246,8 +1348,10 @@ function CodeMoment({
               </h3>
               <p className="mt-3 text-sm leading-relaxed text-ink/70">
                 1. Open{" "}
-                <strong className="font-mono text-ink">pigeon.app</strong> on
-                your other device.
+                <strong className="font-mono text-ink">
+                  usepigeon.vercel.app
+                </strong>{" "}
+                on your other device.
                 <br />
                 2. Click <strong>Receive</strong>.
                 <br />
@@ -1283,6 +1387,8 @@ function ReceiveSection({
   codeError,
   activeRoomCode,
   room,
+  minutes,
+  seconds,
   onCodeChange,
   onSubmit,
   onDownload,
@@ -1295,6 +1401,8 @@ function ReceiveSection({
   codeError: string | null;
   activeRoomCode?: string | undefined;
   room: TransferRoom | null;
+  minutes: string;
+  seconds: string;
   onCodeChange: (code: string) => void;
   onSubmit: (e?: React.FormEvent) => void;
   onDownload: (payload: TransferPayload) => void;
@@ -1314,7 +1422,33 @@ function ReceiveSection({
 
   return (
     <div className="grid gap-4">
-      {isSuccess ? (
+      {appState === "EXPIRED" ? (
+        /* EXPIRED SCREEN FOR RECEIVER */
+        <section className="grid place-items-center border-2 border-ink bg-ink px-6 py-20 text-center text-paper shadow-poster">
+          <div>
+            <span className="mx-auto block w-36 rotate-6 text-paper">
+              <Pigeon
+                state="expired"
+                wingClass="fill-coral"
+                beakClass="fill-acid"
+              />
+            </span>
+            <Clock3 className="mx-auto mt-6 h-9 w-9 text-coral" />
+            <h2 className="mt-4 font-display text-4xl font-extrabold uppercase leading-none sm:text-5xl">
+              This Pigeon flew home.
+            </h2>
+            <p className="mt-3 text-sm text-paper/60">
+              The temporary room expired. Ask the sender for a new code.
+            </p>
+            <Button
+              onClick={onReset}
+              className="mt-6 h-12 rounded-none border-2 border-acid bg-acid px-6 font-bold text-ink hover:bg-paper"
+            >
+              <RotateCcw className="mr-2 h-4 w-4" /> Try Another Code
+            </Button>
+          </div>
+        </section>
+      ) : isSuccess ? (
         /* SUCCESS SCREEN: "GOT IT." */
         <section className="relative border-2 border-ink bg-surface p-6 shadow-poster sm:p-10">
           <div className="mx-auto max-w-3xl text-center">
@@ -1340,6 +1474,12 @@ function ReceiveSection({
                   ? "Delivered."
                   : "Got it."}
             </h2>
+            <div className="mt-2.5 inline-flex items-center gap-2 border-2 border-ink bg-paper px-3 py-1 font-mono text-xs font-bold text-ink shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]">
+              <Clock3 className="h-3.5 w-3.5 text-coral" />
+              <span>
+                EXPIRES IN {minutes}:{seconds}
+              </span>
+            </div>
             <p className="mt-3 text-sm font-semibold text-ink/60 sm:text-base">
               {appState === "DOWNLOADING"
                 ? "Streaming files to your device storage..."
@@ -1796,7 +1936,7 @@ function CampaignSections({
             {
               n: "03",
               t: "Code",
-              d: "Type a 6-character code. The bird delivers it. Then it's gone.",
+              d: "Type a 5-character code. The bird delivers it. Then it's gone.",
               bg: "bg-cobalt",
               fg: "text-paper",
             },

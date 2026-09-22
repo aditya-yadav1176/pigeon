@@ -2,12 +2,10 @@ import os
 import secrets
 from pathlib import Path
 from typing import List, Optional
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException, status
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Request, status
 from fastapi.responses import FileResponse
 from app.models import RoomResponse, RoomStatusResponse
 from app.room_manager import room_manager, StoredFile
-from app.storage import save_upload_file, save_text_file
 from app.storage import save_upload_file, save_text_file, get_room_dir
 from app.config import settings
 from app.security import (
@@ -22,17 +20,27 @@ from app.security import (
 
 router = APIRouter(prefix="/api/rooms", tags=["Rooms"])
 
+ALLOWED_TTL_SECONDS = {180, 300, 600}
+
 @router.post("", response_model=RoomResponse, status_code=status.HTTP_201_CREATED)
 async def create_room_and_upload(
     request: Request,
     files: Optional[List[UploadFile]] = File(None),
-    text: Optional[str] = Form(None)
+    text: Optional[str] = Form(None),
+    ttl_seconds: Optional[int] = Form(600)
 ):
     """
     Creates a temporary room and streams uploaded files / text to disk.
     Enforces maximum total upload size (250MB) and generates secure short code.
     Includes rate-limiting against automated disk exhaustion.
     """
+    if ttl_seconds is not None and ttl_seconds not in ALLOWED_TTL_SECONDS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid duration. Allowed durations are 180, 300, or 600 seconds."
+        )
+    effective_ttl = ttl_seconds if ttl_seconds is not None else 600
+
     client_ip = get_client_ip(request)
     if client_ip != "testclient" and upload_rate_limiter.is_rate_limited(client_ip, max_requests=15, window_seconds=60):
         raise HTTPException(
@@ -43,7 +51,7 @@ async def create_room_and_upload(
     if not files and not text:
         raise HTTPException(status_code=400, detail="Must provide at least one file or text content.")
 
-    room = room_manager.create_room()
+    room = room_manager.create_room(ttl_seconds=effective_ttl)
     total_size = 0
 
     try:

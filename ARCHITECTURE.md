@@ -76,7 +76,7 @@ d:/Projects/pigeon/
 │   ├── storage/                   # Temporary file storage directory (.gitkeep)
 │   ├── requirements.txt           # Lean Python dependencies
 │   ├── test_api.py                # Backend integration test suite
-│   └── test_qa_suite.py           # 34-test comprehensive backend QA suite
+│   └── test_qa_suite.py           # 35-test comprehensive backend QA suite
 ├── components.json                # shadcn/ui configuration (new-york style, slate base)
 ├── package.json                   # Dependency definitions and npm scripts
 ├── tsconfig.json                  # Path aliases (@/* -> src/*) and TS compiler options

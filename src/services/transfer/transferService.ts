@@ -45,6 +45,7 @@ export interface ITransferService {
   uploadFiles(
     files: File[],
     onProgress?: UploadProgressCallback,
+    ttlSeconds?: number,
   ): Promise<TransferRoom>;
 
   /**
@@ -53,6 +54,7 @@ export interface ITransferService {
   uploadText(
     text: string,
     onProgress?: UploadProgressCallback,
+    ttlSeconds?: number,
   ): Promise<TransferRoom>;
 
   /**

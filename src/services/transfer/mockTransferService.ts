@@ -54,7 +54,7 @@ export class MockTransferService implements ITransferService {
 
     this.rooms.set("K7M4P", {
       code: "K7M4P",
-      url: "pigeon.app/r/K7M4P",
+      url: "usepigeon.vercel.app/r/K7M4P",
       payloads: demoPayloads,
       totalSize: 29_000_000,
       createdAt: Date.now(),
@@ -75,9 +75,12 @@ export class MockTransferService implements ITransferService {
   async uploadFiles(
     files: File[],
     onProgress?: UploadProgressCallback,
+    ttlSeconds?: number,
   ): Promise<TransferRoom> {
     const code = this.generateCode();
     const normalized = normalizeCode(code);
+    const effectiveTtl =
+      ttlSeconds && [180, 300, 600].includes(ttlSeconds) ? ttlSeconds : 600;
 
     // Simulate mock upload progress over ~1.4s
     await this.simulateProgress(onProgress);
@@ -95,11 +98,11 @@ export class MockTransferService implements ITransferService {
 
     const room: TransferRoom = {
       code,
-      url: `pigeon.app/r/${code}`,
+      url: `usepigeon.vercel.app/r/${code}`,
       payloads,
       totalSize,
       createdAt: Date.now(),
-      expiresAt: Date.now() + 10 * 60 * 1000, // 10-minute TTL
+      expiresAt: Date.now() + effectiveTtl * 1000,
     };
 
     this.rooms.set(normalized, room);
@@ -109,9 +112,12 @@ export class MockTransferService implements ITransferService {
   async uploadText(
     text: string,
     onProgress?: UploadProgressCallback,
+    ttlSeconds?: number,
   ): Promise<TransferRoom> {
     const code = this.generateCode();
     const normalized = normalizeCode(code);
+    const effectiveTtl =
+      ttlSeconds && [180, 300, 600].includes(ttlSeconds) ? ttlSeconds : 600;
 
     await this.simulateProgress(onProgress);
 
@@ -133,11 +139,11 @@ export class MockTransferService implements ITransferService {
 
     const room: TransferRoom = {
       code,
-      url: `pigeon.app/r/${code}`,
+      url: `usepigeon.vercel.app/r/${code}`,
       payloads: [payload],
       totalSize: blob.size,
       createdAt: Date.now(),
-      expiresAt: Date.now() + 10 * 60 * 1000,
+      expiresAt: Date.now() + effectiveTtl * 1000,
     };
 
     this.rooms.set(normalized, room);
