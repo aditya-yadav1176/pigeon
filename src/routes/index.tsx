@@ -8,17 +8,50 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "Move a file from your phone to your laptop with one drop and one scan. No login or install.",
+          "Drop it. Get a short code. Pick it up on your laptop or board. Fast temporary file handoff.",
       },
+      { property: "og:site_name", content: "PIGEON" },
+      { property: "og:type", content: "website" },
+      { property: "og:url", content: "https://usepigeon.vercel.app/" },
       { property: "og:title", content: "PIGEON — Get it off your phone" },
       {
         property: "og:description",
         content:
-          "Drop it. Scan it. Done. A fast temporary handoff between your phone and laptop.",
+          "Drop it. Get a short code. Pick it up on your laptop or board. Fast temporary file handoff.",
       },
-      { property: "og:type", content: "website" },
+      {
+        property: "og:image",
+        content: "https://usepigeon.vercel.app/og-image.png",
+      },
+      {
+        property: "og:image:secure_url",
+        content: "https://usepigeon.vercel.app/og-image.png",
+      },
+      { property: "og:image:type", content: "image/png" },
+      { property: "og:image:width", content: "1471" },
+      { property: "og:image:height", content: "862" },
+      {
+        property: "og:image:alt",
+        content: "PIGEON — Get it off your phone",
+      },
+      { property: "og:locale", content: "en_US" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "PIGEON — Get it off your phone" },
+      {
+        name: "twitter:description",
+        content:
+          "Drop it. Get a short code. Pick it up on your laptop or board. Fast temporary file handoff.",
+      },
+      {
+        name: "twitter:image",
+        content: "https://usepigeon.vercel.app/og-image.png",
+      },
+      {
+        name: "twitter:image:alt",
+        content: "PIGEON — Get it off your phone",
+      },
     ],
+    links: [{ rel: "canonical", href: "https://usepigeon.vercel.app/" }],
   }),
   component: Index,
 });
