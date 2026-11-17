@@ -6,6 +6,7 @@ class FileMetadata(BaseModel):
     name: str
     size: int
     content_type: str = "application/octet-stream"
+    text: Optional[str] = None
 
 class RoomResponse(BaseModel):
     code: str

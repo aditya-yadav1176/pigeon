@@ -34,6 +34,7 @@ Phone (4G/5G Mobile Cellular)                Laptop (Home/Office Wi-Fi)
 Render hosts the Python FastAPI server as a **Web Service** with automatic HTTPS and dynamic `$PORT` assignment.
 
 ### Step 2.1: Create Web Service on Render
+
 1. Go to [render.com](https://render.com) and log in with your GitHub account.
 2. Click **New +** ➔ **Web Service**.
 3. Select your repository: `aditya-yadav1176/pigeon`.
@@ -54,12 +55,15 @@ Render hosts the Python FastAPI server as a **Web Service** with automatic HTTPS
    - **Instance Type**: `Free`
 
 ### Step 2.2: Set Environment Variables (Backend)
+
 Under the **Environment Variables** section on Render, configure:
+
 - **`PYTHON_VERSION`**: `3.11.0` (or `3.10` / `3.12`)
 - **`CORS_ORIGINS`**: `https://YOUR-PIGEON-VERCEL-DOMAIN.vercel.app`
-  *(You can also set this after creating the Vercel app. Wildcard `*.vercel.app` regex is already built-in to FastAPI for convenience, but setting your exact domain is best practice.)*
+  _(You can also set this after creating the Vercel app. Wildcard `*.vercel.app` regex is already built-in to FastAPI for convenience, but setting your exact domain is best practice.)_
 
 ### Step 2.3: Deploy and Verify Backend
+
 1. Click **Create Web Service**.
 2. Wait for Render to install requirements and start Uvicorn.
 3. Once deployed, Render will provide a public URL:
@@ -70,7 +74,7 @@ Under the **Environment Variables** section on Render, configure:
    ```
    Expected response:
    ```json
-   {"status": "ok", "app": "PIGEON"}
+   { "status": "ok", "app": "PIGEON" }
    ```
 5. You can also view the interactive Swagger docs at:
    ```
@@ -84,34 +88,40 @@ Under the **Environment Variables** section on Render, configure:
 Vercel hosts the React + TanStack Start frontend with global edge CDN delivery.
 
 ### Step 3.1: Import Project into Vercel
+
 1. Go to [vercel.com](https://vercel.com) and log in with your GitHub account.
 2. Click **Add New...** ➔ **Project**.
 3. Select `aditya-yadav1176/pigeon` from your GitHub repositories and click **Import**.
 
 ### Step 3.2: Configure Environment Variables (Frontend)
+
 Under **Environment Variables**, add:
+
 - **`VITE_API_BASE_URL`**: `https://<your-backend-name>.onrender.com`
-  *(IMPORTANT: Do NOT include a trailing slash, and do NOT use localhost)*
+  _(IMPORTANT: Do NOT include a trailing slash, and do NOT use localhost)_
 - **`NITRO_PRESET`**: `vercel`
 
 ### Step 3.3: Deploy
+
 1. Click **Deploy**.
 2. Vercel will run `vite build` and configure the edge routes.
 3. Once completed, Vercel provides your public domain:
    `https://<your-app-name>.vercel.app`
 
-*(Optional but recommended: update the Render backend environment variable `CORS_ORIGINS` with this exact Vercel URL).*
+_(Optional but recommended: update the Render backend environment variable `CORS_ORIGINS` with this exact Vercel URL)._
 
 ---
 
 ## 4. Important Operational Limitations
 
 ### A. Render Free Tier Spin-Down
+
 - **Inactivity Sleep**: Render Free Web Services automatically spin down ("sleep") after 15 minutes of inactivity.
 - **Cold Start Delay**: If sleeping, the first incoming request may take 30–60 seconds to wake up the server. Subsequent requests will be fast.
 - This is standard and expected for Phase 7 testing.
 
 ### B. Temporary Filesystem Storage (Phase 10 Hardened Lifecycle)
+
 - All transferred files are stored temporarily on the local disk (`backend/storage/<room_code>/`).
 - **Render Ephemeral Disk Warning**: Render container filesystems are strictly ephemeral. Any files and in-memory rooms will reset if the Render instance restarts, sleeps due to inactivity, or redeploys.
 - **Automated Lifecycle Purge**:
@@ -128,6 +138,7 @@ Under **Environment Variables**, add:
 > To truly verify public internet connectivity, ensure the **Phone is on cellular data (4G/5G)** and the **Laptop is on Wi-Fi**. Disconnect the phone from the local Wi-Fi.
 
 ### Test 1: Phone (Cellular Data) ➔ Laptop (Wi-Fi)
+
 1. **On Phone (Cellular Data)**:
    - Open browser: `https://<your-app-name>.vercel.app`
    - In the **Send** tab, tap to select a photo, document, or paste a note.
@@ -142,6 +153,7 @@ Under **Environment Variables**, add:
    - Open downloaded file and confirm byte-for-byte integrity.
 
 ### Test 2: Reverse Transfer — Laptop (Wi-Fi) ➔ Phone (Cellular Data)
+
 1. **On Laptop (Wi-Fi)**:
    - Select or drag and drop files into the **Send** tab.
    - Click **Send across**.
@@ -152,6 +164,6 @@ Under **Environment Variables**, add:
    - Download the files directly to your phone.
 
 ### Test 3: Expiration & Edge Cases
+
 1. Wait 10 minutes (room TTL) or enter an invalid code (e.g., `ZZ999`).
 2. Verify friendly error messaging ("That Pigeon code doesn't exist or has expired. Ask the sender for a fresh code.").
-

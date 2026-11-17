@@ -7,6 +7,7 @@ import {
   Clock3,
   Copy,
   Download,
+  ExternalLink,
   File,
   FileImage,
   FileText,
@@ -193,6 +194,7 @@ export function PigeonExperience() {
   );
   const [textOpen, setTextOpen] = useState(false);
   const [textValue, setTextValue] = useState("");
+  const [stagedText, setStagedText] = useState("");
   const [copied, setCopied] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [downloadedIds, setDownloadedIds] = useState<string[]>([]);
@@ -323,6 +325,34 @@ export function PigeonExperience() {
     }
   }
 
+  function syncStagedPayloads(files: File[], text: string) {
+    const filePayloads: TransferPayload[] = files.map((file, index) => ({
+      id: `file-${file.name}-${file.size}-${index}`,
+      name: file.name,
+      size: file.size,
+      type: file.type || "application/octet-stream",
+      file,
+    }));
+
+    const trimmed = text.trim();
+    if (!trimmed) {
+      setActivePayloads(filePayloads);
+      return;
+    }
+
+    const isUrl =
+      trimmed.startsWith("http://") || trimmed.startsWith("https://");
+    const textPayload: TransferPayload = {
+      id: "staged-text-payload",
+      name: isUrl ? "Shared Link" : "Shared Note",
+      size: new Blob([trimmed]).size,
+      type: "text/plain",
+      text: trimmed,
+    };
+
+    setActivePayloads([...filePayloads, textPayload]);
+  }
+
   // Handle incoming file drops / selections
   function handleFiles(list: FileList | File[]) {
     const rawIncoming = Array.from(list);
@@ -342,9 +372,13 @@ export function PigeonExperience() {
       appState === "FILE_SELECTED"
         ? [...selectedFiles, ...validIncoming]
         : validIncoming;
-    const totalSize = combinedFiles.reduce((acc, file) => acc + file.size, 0);
+    const totalFilesSize = combinedFiles.reduce(
+      (acc, file) => acc + file.size,
+      0,
+    );
+    const textSize = stagedText ? new Blob([stagedText]).size : 0;
 
-    if (totalSize > 250 * 1024 * 1024) {
+    if (totalFilesSize + textSize > 250 * 1024 * 1024) {
       setUploadError({
         title: "That one’s too heavy.",
         detail:
@@ -356,60 +390,48 @@ export function PigeonExperience() {
 
     setUploadError(null);
     setSelectedFiles(combinedFiles);
-    setActivePayloads(
-      combinedFiles.map((file, index) => ({
-        id: `payload-${file.name}-${file.size}-${index}`,
-        name: file.name,
-        size: file.size,
-        type: file.type || "application/octet-stream",
-        file,
-      })),
-    );
+    syncStagedPayloads(combinedFiles, stagedText);
     setAppState("FILE_SELECTED");
     setProgress(0);
     setMode("send");
   }
 
-  // Handle text paste dialog submission
-  async function handleSendText() {
+  // Handle text paste dialog submission - stages text with existing files
+  function handleStageText() {
     const trimmed = textValue.trim();
-    if (!trimmed) return;
+    if (!trimmed && !selectedFiles.length) {
+      setTextOpen(false);
+      return;
+    }
 
-    setAppState("UPLOADING");
-    setTextOpen(false);
-    setProgress(0);
-    setUploadError(null);
+    const textSize = trimmed ? new Blob([trimmed]).size : 0;
+    const totalFilesSize = selectedFiles.reduce(
+      (acc, file) => acc + file.size,
+      0,
+    );
 
-    try {
-      const room = await transferService.uploadText(
-        trimmed,
-        (pct) => setProgress(pct),
-        selectedDuration,
-      );
-      setActiveRoom(room);
-      setActivePayloads(room.payloads);
-      setAppState("WAITING_FOR_RECEIVER");
-      const remainingSeconds = Math.max(
-        1,
-        Math.floor((room.expiresAt - Date.now()) / 1000),
-      );
-      setSeconds(remainingSeconds);
-    } catch (err) {
-      const message =
-        err instanceof Error
-          ? err.message
-          : "Something went wrong while uploading.";
+    if (totalFilesSize + textSize > 250 * 1024 * 1024) {
       setUploadError({
-        title: "Could not upload note.",
-        detail: message,
+        title: "That one’s too heavy.",
+        detail:
+          "Pigeon carries up to 250 MB total per transfer. Please choose smaller content.",
       });
       setAppState("ERROR");
+      setTextOpen(false);
+      return;
     }
+
+    setStagedText(trimmed);
+    setTextOpen(false);
+    syncStagedPayloads(selectedFiles, trimmed);
+    setAppState("FILE_SELECTED");
+    setProgress(0);
+    setMode("send");
   }
 
-  // Trigger Send Across
+  // Trigger Send Across (uploads files and/or text together)
   async function startUpload() {
-    if (!selectedFiles.length) return;
+    if (!selectedFiles.length && !stagedText.trim()) return;
     setAppState("UPLOADING");
     setProgress(0);
     setUploadError(null);
@@ -419,6 +441,7 @@ export function PigeonExperience() {
         selectedFiles,
         (pct) => setProgress(pct),
         selectedDuration,
+        stagedText.trim() || undefined,
       );
       setActiveRoom(room);
       setActivePayloads(room.payloads);
@@ -500,6 +523,7 @@ export function PigeonExperience() {
     setSelectedDuration(600);
     setDownloadedIds([]);
     setTextValue("");
+    setStagedText("");
     setCopied(false);
     setCodeError(null);
     setMode("send");
@@ -829,14 +853,23 @@ export function PigeonExperience() {
                       <FileList
                         files={activePayloads}
                         onRemove={(id) => {
-                          const next = activePayloads.filter(
-                            (file) => file.id !== id,
-                          );
-                          setActivePayloads(next);
-                          setSelectedFiles(
-                            next.map((p) => p.file).filter(Boolean) as File[],
-                          );
-                          if (!next.length) setAppState("IDLE");
+                          if (id === "staged-text-payload") {
+                            setStagedText("");
+                            setTextValue("");
+                            syncStagedPayloads(selectedFiles, "");
+                            if (!selectedFiles.length) setAppState("IDLE");
+                          } else {
+                            const next = selectedFiles.filter(
+                              (file, index) =>
+                                `file-${file.name}-${file.size}-${index}` !==
+                                id,
+                            );
+                            setSelectedFiles(next);
+                            syncStagedPayloads(next, stagedText);
+                            if (!next.length && !stagedText.trim()) {
+                              setAppState("IDLE");
+                            }
+                          }
                         }}
                       />
 
@@ -882,20 +915,33 @@ export function PigeonExperience() {
                             value={selectedDuration}
                             onChange={setSelectedDuration}
                           />
-                          <div className="grid gap-2 sm:grid-cols-2">
+                          <div className="flex flex-col gap-2">
                             <Button
                               onClick={startUpload}
-                              className="h-12 rounded-none border-2 border-ink bg-cobalt text-paper shadow-none hover:bg-ink"
+                              className="pigeon-interactive-btn h-12 w-full rounded-none border-2 border-ink bg-cobalt text-paper shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:bg-ink"
                             >
                               <Upload className="mr-2 h-4 w-4" /> Send across
                             </Button>
-                            <Button
-                              onClick={() => fileInputRef.current?.click()}
-                              variant="outline"
-                              className="h-12 rounded-none border-2 border-ink bg-paper"
-                            >
-                              <Plus className="mr-2 h-4 w-4" /> Add more
-                            </Button>
+                            <div className="grid grid-cols-2 gap-2">
+                              <Button
+                                onClick={() => fileInputRef.current?.click()}
+                                variant="outline"
+                                className="pigeon-interactive-btn h-11 rounded-none border-2 border-ink bg-paper text-xs font-bold text-ink shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] sm:text-sm"
+                              >
+                                <Plus className="mr-1.5 h-4 w-4" /> Add files
+                              </Button>
+                              <Button
+                                onClick={() => {
+                                  setTextValue(stagedText);
+                                  setTextOpen(true);
+                                }}
+                                variant="outline"
+                                className="pigeon-interactive-btn h-11 rounded-none border-2 border-ink bg-paper text-xs font-bold text-ink shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] sm:text-sm"
+                              >
+                                <MessageSquareText className="mr-1.5 h-4 w-4" />
+                                {stagedText ? "Edit note" : "Add note"}
+                              </Button>
+                            </div>
                           </div>
                         </div>
                       )}
@@ -948,7 +994,10 @@ export function PigeonExperience() {
                             <Upload className="mr-2 h-4 w-4" /> Choose files
                           </Button>
                           <Button
-                            onClick={() => setTextOpen(true)}
+                            onClick={() => {
+                              setTextValue(stagedText);
+                              setTextOpen(true);
+                            }}
                             variant="outline"
                             className="pigeon-interactive-btn h-12 rounded-none border-2 border-ink bg-paper shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
                           >
@@ -1012,7 +1061,7 @@ export function PigeonExperience() {
           <DialogContent className="max-w-xl rounded-none border-2 border-ink bg-paper p-5 shadow-poster sm:p-7">
             <DialogHeader>
               <DialogTitle className="font-display text-3xl font-extrabold">
-                Send the words.
+                {stagedText ? "Edit the words." : "Send the words."}
               </DialogTitle>
               <DialogDescription className="text-ink/55">
                 Paste a note, link, code, or anything you don’t want to type
@@ -1037,10 +1086,13 @@ export function PigeonExperience() {
               </p>
               <Button
                 disabled={!textValue.trim()}
-                onClick={handleSendText}
+                onClick={handleStageText}
                 className="h-11 rounded-none border-2 border-ink bg-cobalt px-5 text-paper shadow-none hover:bg-ink"
               >
-                <MessageSquareText className="mr-2 h-4 w-4" /> Add text
+                <MessageSquareText className="mr-2 h-4 w-4" />
+                {selectedFiles.length || stagedText
+                  ? "Attach note"
+                  : "Add note"}
               </Button>
             </div>
           </DialogContent>
@@ -1379,6 +1431,129 @@ function CodeMoment({
 }
 
 /**
+ * Ready-to-Copy Text Card for Notes and Links
+ */
+function ReadyToCopyTextCard({
+  payload,
+  onDownload,
+  isDownloaded,
+}: {
+  payload: TransferPayload;
+  onDownload: (payload: TransferPayload) => void;
+  isDownloaded: boolean;
+}) {
+  const [copied, setCopied] = useState(false);
+  const text = payload.text || "";
+  const trimmed = text.trim();
+  const isUrl = trimmed.startsWith("http://") || trimmed.startsWith("https://");
+
+  async function handleCopy() {
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+        textArea.style.position = "fixed";
+        textArea.style.opacity = "0";
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textArea);
+      }
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Fallback
+    }
+  }
+
+  return (
+    <div className="border-2 border-ink bg-paper p-4 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] sm:p-5">
+      {/* Top Bar: Type Badge, Size, and Action Buttons */}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b-2 border-ink pb-3">
+        <div className="flex items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 border border-ink bg-acid px-2.5 py-0.5 font-display text-[11px] font-extrabold uppercase tracking-wider text-ink shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]">
+            {isUrl ? (
+              <>
+                <ExternalLink className="h-3 w-3" /> Shared Link
+              </>
+            ) : (
+              <>
+                <MessageSquareText className="h-3 w-3" /> Shared Note
+              </>
+            )}
+          </span>
+          <span className="text-xs font-semibold text-ink/50">
+            {formatSize(payload.size)}
+          </span>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {isUrl && (
+            <a
+              href={trimmed}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="pigeon-interactive-btn inline-flex h-9 items-center border-2 border-ink bg-acid px-3 text-xs font-bold text-ink shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:bg-ink hover:text-paper"
+            >
+              <ExternalLink className="mr-1.5 h-3.5 w-3.5" /> Open link
+            </a>
+          )}
+          <Button
+            type="button"
+            onClick={handleCopy}
+            className={cn(
+              "pigeon-interactive-btn h-9 rounded-none border-2 border-ink px-3 text-xs font-bold shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-colors",
+              copied
+                ? "bg-acid text-ink hover:bg-acid"
+                : "bg-ink text-paper hover:bg-cobalt",
+            )}
+          >
+            {copied ? (
+              <>
+                <Check className="mr-1.5 h-3.5 w-3.5 text-ink" /> Copied!
+              </>
+            ) : (
+              <>
+                <Copy className="mr-1.5 h-3.5 w-3.5" /> Copy text
+              </>
+            )}
+          </Button>
+        </div>
+      </div>
+
+      {/* Main Content: Selectable, scrollable, preformatted code/text box */}
+      <div className="mt-3.5">
+        <pre className="max-h-64 overflow-y-auto whitespace-pre-wrap break-words border-2 border-ink bg-surface p-4 font-mono text-xs leading-relaxed text-ink selection:bg-acid selection:text-ink sm:text-sm">
+          {text}
+        </pre>
+      </div>
+
+      {/* Footer: Subtle option to download the .txt file if desired */}
+      <div className="mt-3 flex items-center justify-between text-xs text-ink/60">
+        <span className="font-semibold">{payload.name}</span>
+        <button
+          type="button"
+          onClick={() => onDownload(payload)}
+          className="inline-flex items-center gap-1.5 font-bold text-ink/70 underline underline-offset-2 hover:text-cobalt"
+        >
+          {isDownloaded ? (
+            <>
+              <Check className="h-3.5 w-3.5 text-cobalt" /> Downloaded .txt
+            </>
+          ) : (
+            <>
+              <Download className="h-3.5 w-3.5" /> Save as .txt
+            </>
+          )}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/**
  * Receiver Experience: Code entry, Connecting, Transfer animation, and Success/Download
  */
 function ReceiveSection({
@@ -1485,48 +1660,54 @@ function ReceiveSection({
                 ? "Streaming files to your device storage..."
                 : appState === "COMPLETED"
                   ? "All files downloaded successfully."
-                  : `The pigeon delivered ${room.payloads.length} ${room.payloads.length === 1 ? "file" : "files"} from the sender.`}
+                  : room.payloads.length === 1 && room.payloads[0]?.text
+                    ? "The pigeon delivered a note from the sender."
+                    : `The pigeon delivered ${room.payloads.length} ${room.payloads.length === 1 ? "file" : "files"} from the sender.`}
             </p>
 
-            {/* File List for Download */}
-            <div className="mt-8 space-y-3 text-left">
-              {room.payloads.map((payload) => (
-                <div
-                  key={payload.id}
-                  className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 border-2 border-ink bg-paper p-4"
-                >
-                  <span className="grid h-12 w-12 shrink-0 place-items-center bg-acid text-ink">
-                    <FileGlyph type={payload.type} />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="truncate text-base font-bold text-ink">
-                      {payload.name}
-                    </p>
-                    <p className="text-xs font-semibold text-ink/50">
-                      {formatSize(payload.size)} · {payload.type}
-                    </p>
-                    {payload.text && (
-                      <p className="mt-2 rounded-none border border-ink/20 bg-surface p-2 text-sm text-ink/75">
-                        {payload.text}
-                      </p>
-                    )}
-                  </div>
-                  <Button
-                    onClick={() => onDownload(payload)}
-                    className="pigeon-interactive-btn h-11 rounded-none border-2 border-ink bg-cobalt px-4 text-paper shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:bg-ink"
+            {/* File List for Download and Copy */}
+            <div className="mt-8 space-y-4 text-left">
+              {room.payloads.map((payload) =>
+                payload.text ? (
+                  <ReadyToCopyTextCard
+                    key={payload.id}
+                    payload={payload}
+                    onDownload={onDownload}
+                    isDownloaded={downloadedIds.includes(payload.id)}
+                  />
+                ) : (
+                  <div
+                    key={payload.id}
+                    className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 border-2 border-ink bg-paper p-4"
                   >
-                    {downloadedIds.includes(payload.id) ? (
-                      <>
-                        <Check className="mr-2 h-4 w-4" /> Downloaded
-                      </>
-                    ) : (
-                      <>
-                        <Download className="mr-2 h-4 w-4" /> Download
-                      </>
-                    )}
-                  </Button>
-                </div>
-              ))}
+                    <span className="grid h-12 w-12 shrink-0 place-items-center bg-acid text-ink">
+                      <FileGlyph type={payload.type} />
+                    </span>
+                    <div className="min-w-0">
+                      <p className="truncate text-base font-bold text-ink">
+                        {payload.name}
+                      </p>
+                      <p className="text-xs font-semibold text-ink/50">
+                        {formatSize(payload.size)} · {payload.type}
+                      </p>
+                    </div>
+                    <Button
+                      onClick={() => onDownload(payload)}
+                      className="pigeon-interactive-btn h-11 rounded-none border-2 border-ink bg-cobalt px-4 text-paper shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:bg-ink"
+                    >
+                      {downloadedIds.includes(payload.id) ? (
+                        <>
+                          <Check className="mr-2 h-4 w-4" /> Downloaded
+                        </>
+                      ) : (
+                        <>
+                          <Download className="mr-2 h-4 w-4" /> Download
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                ),
+              )}
             </div>
 
             {/* Batch actions */}

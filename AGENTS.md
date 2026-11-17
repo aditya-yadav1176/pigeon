@@ -7,6 +7,7 @@ PIGEON is a temporary, no-login file transfer application designed for fast, sea
 ## Current Stack
 
 ### Frontend:
+
 - React 19
 - TypeScript
 - TanStack Start
@@ -15,14 +16,17 @@ PIGEON is a temporary, no-login file transfer application designed for fast, sea
 - Tailwind CSS v4
 
 ### Backend:
+
 - Python 3.10+
 - FastAPI
 
 ### Deployment:
+
 - Vercel (Frontend)
 - Render (Backend)
 
 ### Storage & State:
+
 - Temporary backend filesystem (`backend/storage/{room_code}/`)
 - In-memory room metadata manager (`RoomManager`)
 

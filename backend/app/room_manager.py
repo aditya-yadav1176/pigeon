@@ -9,19 +9,21 @@ from app.storage import delete_room_storage, cleanup_orphaned_storage
 CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 
 class StoredFile:
-    def __init__(self, file_id: str, name: str, size: int, content_type: str, file_path: str):
+    def __init__(self, file_id: str, name: str, size: int, content_type: str, file_path: str, text: Optional[str] = None):
         self.id = file_id
         self.name = name
         self.size = size
         self.content_type = content_type
         self.file_path = file_path
+        self.text = text
 
     def to_metadata(self) -> FileMetadata:
         return FileMetadata(
             id=self.id,
             name=self.name,
             size=self.size,
-            content_type=self.content_type
+            content_type=self.content_type,
+            text=self.text
         )
 
 class Room:

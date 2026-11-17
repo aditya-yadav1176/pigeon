@@ -234,13 +234,13 @@ The current app runs inside a single client state machine inside `src/components
 
 ### UI Primitives (`src/components/ui/`)
 
-| Component      | File                             | Role & Purpose                                                                                                                                                         |
-| :------------- | :------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Button`       | `src/components/ui/button.tsx`   | Primary button component with variants. Styled with sharp corners (`rounded-none`), heavy navy borders (`border-2 border-ink`), and bold hover transitions.             |
-| `Dialog`       | `src/components/ui/dialog.tsx`   | Accessible Radix Dialog wrapper used for the text-pasting and note modal.                                                                                              |
-| `Progress`     | `src/components/ui/progress.tsx` | Progress bar used during live file upload tracking, styled with electric acid-green fill.                                                                              |
-| `Tooltip`      | `src/components/ui/tooltip.tsx`  | Accessible Radix Tooltip wrapper for action buttons and copy icons.                                                                                                    |
-| `ScrollReveal` | `src/components/ui/ScrollReveal.tsx` | Viewport-triggered scroll reveal container using IntersectionObserver for progressive editorial section display.                                                   |
+| Component      | File                                 | Role & Purpose                                                                                                                                              |
+| :------------- | :----------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Button`       | `src/components/ui/button.tsx`       | Primary button component with variants. Styled with sharp corners (`rounded-none`), heavy navy borders (`border-2 border-ink`), and bold hover transitions. |
+| `Dialog`       | `src/components/ui/dialog.tsx`       | Accessible Radix Dialog wrapper used for the text-pasting and note modal.                                                                                   |
+| `Progress`     | `src/components/ui/progress.tsx`     | Progress bar used during live file upload tracking, styled with electric acid-green fill.                                                                   |
+| `Tooltip`      | `src/components/ui/tooltip.tsx`      | Accessible Radix Tooltip wrapper for action buttons and copy icons.                                                                                         |
+| `ScrollReveal` | `src/components/ui/ScrollReveal.tsx` | Viewport-triggered scroll reveal container using IntersectionObserver for progressive editorial section display.                                            |
 
 ---
 
@@ -256,7 +256,9 @@ Pigeon explicitly rejects generic SaaS aesthetics (floating purple gradients, so
 /* Defined in src/styles.css */
 :root {
   --paper: oklch(0.96 0.018 83); /* #F7F3EB Warm cream/off-white background */
-  --ink: oklch(0.25 0.06 264); /* #141C2E Deep navy/almost-black typography & borders */
+  --ink: oklch(
+    0.25 0.06 264
+  ); /* #141C2E Deep navy/almost-black typography & borders */
   --cobalt: oklch(0.58 0.24 263); /* #1E5BFF Electric blue primary accent */
   --acid: oklch(0.89 0.23 123); /* #B9F227 High-voltage lime/green accent */
   --coral: oklch(0.72 0.16 32); /* #FF6347 Energetic coral highlight */
@@ -330,7 +332,14 @@ State is entirely local to `src/components/pigeon/PigeonExperience.tsx`:
 
 ```ts
 type Stage =
-  "empty" | "selected" | "uploading" | "ready" | "connected" | "received" | "expired" | "error";
+  | "empty"
+  | "selected"
+  | "uploading"
+  | "ready"
+  | "connected"
+  | "received"
+  | "expired"
+  | "error";
 
 type Payload = {
   id: string;

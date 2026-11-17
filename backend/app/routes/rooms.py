@@ -98,7 +98,8 @@ async def create_room_and_upload(
                 name=name,
                 size=file_size,
                 content_type="text/plain; charset=utf-8",
-                file_path=str(file_path)
+                file_path=str(file_path),
+                text=trimmed
             ))
 
         if not room.files:

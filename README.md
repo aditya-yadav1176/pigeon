@@ -118,15 +118,15 @@ The frontend launches at `http://localhost:3000`. It connects to `http://localho
 
 ## Environment Variables
 
-| Variable | Location | Default | Purpose |
-|---|---|---|---|
-| `VITE_API_BASE_URL` | Frontend | `http://localhost:8000` | FastAPI backend URL (set to your Render service URL on Vercel). |
-| `VITE_TRANSFER_MODE` | Frontend | `api` | `api` for the real backend or `mock` for local testing. |
-| `HOST` | Backend | `0.0.0.0` | Network binding interface for Uvicorn. |
-| `PORT` | Backend | `8000` | Port number for Uvicorn server. |
-| `ROOM_TTL_SECONDS` | Backend | `600` | Room lifetime in seconds (10 minutes). |
-| `MAX_FILE_SIZE_MB` | Backend | `250` | Maximum payload size in megabytes. |
-| `CORS_ORIGINS` | Backend | `["http://localhost:3000", ...]` | Allowed frontend origins. |
+| Variable             | Location | Default                          | Purpose                                                         |
+| -------------------- | -------- | -------------------------------- | --------------------------------------------------------------- |
+| `VITE_API_BASE_URL`  | Frontend | `http://localhost:8000`          | FastAPI backend URL (set to your Render service URL on Vercel). |
+| `VITE_TRANSFER_MODE` | Frontend | `api`                            | `api` for the real backend or `mock` for local testing.         |
+| `HOST`               | Backend  | `0.0.0.0`                        | Network binding interface for Uvicorn.                          |
+| `PORT`               | Backend  | `8000`                           | Port number for Uvicorn server.                                 |
+| `ROOM_TTL_SECONDS`   | Backend  | `600`                            | Room lifetime in seconds (10 minutes).                          |
+| `MAX_FILE_SIZE_MB`   | Backend  | `250`                            | Maximum payload size in megabytes.                              |
+| `CORS_ORIGINS`       | Backend  | `["http://localhost:3000", ...]` | Allowed frontend origins.                                       |
 
 ---
 

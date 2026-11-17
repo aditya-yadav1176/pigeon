@@ -26,6 +26,7 @@ interface ApiFileMetadata {
   name: string;
   size: number;
   content_type: string;
+  text?: string | null;
 }
 
 interface ApiRoomResponse {
@@ -94,10 +95,14 @@ export class FastAPITransferService implements ITransferService {
     files: File[],
     onProgress?: UploadProgressCallback,
     ttlSeconds?: number,
+    text?: string,
   ): Promise<TransferRoom> {
     const formData = new FormData();
     for (const file of files) {
       formData.append("files", file);
+    }
+    if (text && text.trim()) {
+      formData.append("text", text.trim());
     }
     if (ttlSeconds !== undefined) {
       formData.append("ttl_seconds", ttlSeconds.toString());
@@ -314,6 +319,7 @@ export class FastAPITransferService implements ITransferService {
       name: f.name,
       size: f.size,
       type: f.content_type,
+      text: f.text ?? undefined,
       roomCode: data.code,
       downloadUrl: `${this.apiBaseUrl}/api/rooms/${encodeURIComponent(data.code)}/files/${encodeURIComponent(f.id)}`,
     }));

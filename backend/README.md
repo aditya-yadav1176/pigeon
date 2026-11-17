@@ -3,6 +3,7 @@
 Ultra-lightweight, temporary cross-device file transfer backend.
 
 ## Architecture
+
 - **Framework**: FastAPI + Python 3.11+
 - **Storage**: Local chunked streaming filesystem storage (`storage/{room_code}/`)
 - **Metadata**: In-memory store (`dict[str, Room]`)
